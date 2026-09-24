@@ -1,6 +1,9 @@
-lockfileVersion: '9.12.0'
+lockfileVersion: '9.0'
 
-packages: {}
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
 
 importers:
+
   .: {}
