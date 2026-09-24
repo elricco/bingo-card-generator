@@ -210,12 +210,19 @@ const REDIRECT_URI = "http://localhost:3001/auth/twitch/callback";
 
 function fakeFetchSequence(responses: Array<{ ok: boolean; status?: number; json: () => unknown }>) {
   let call = 0;
-  return vi.fn(async () => {
+  return vi.fn(async (_url: string, _init?: RequestInit) => {
     const response = responses[call];
     call += 1;
     return response as unknown as Response;
   });
 }
+
+> **Korrektur (während Task 4 entdeckt):** `fakeFetchSequence`s Mock braucht explizite
+> Parameter (`_url`, `_init`), sonst inferiert TypeScript die Aufrufsignatur als
+> `() => ...` (nullstellig). `fetchImpl.mock.calls[0] as [string, RequestInit]` schlägt
+> dann bei `tsc --noEmit` fehl (Tupel-Arität 0 vs. 2), obwohl `vitest run` (kein
+> Type-Check) grün bleibt. Ursprünglicher Code hatte keine Parameter — hier bereits
+> korrigiert.
 
 describe("createTwitchProvider", () => {
   it("hat den Namen 'twitch'", () => {
