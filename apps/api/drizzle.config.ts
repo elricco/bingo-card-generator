@@ -5,6 +5,6 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "postgres://bingo:bingo@localhost:5432/bingo",
+    url: process.env.DATABASE_URL ?? "postgres://bingo:bingo@localhost:5433/bingo",
   },
 });
