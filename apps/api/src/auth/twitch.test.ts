@@ -7,7 +7,7 @@ const REDIRECT_URI = "http://localhost:3001/auth/twitch/callback";
 
 function fakeFetchSequence(responses: Array<{ ok: boolean; status?: number; json: () => unknown }>) {
   let call = 0;
-  return vi.fn(async () => {
+  return vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => {
     const response = responses[call];
     call += 1;
     return response as unknown as Response;
