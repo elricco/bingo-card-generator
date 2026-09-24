@@ -13,3 +13,4 @@ playwright-report/
 test-results/
 .turbo/
 pnpm-lock.yaml.bak
+.superpowers/
