@@ -99,7 +99,6 @@ packages:
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@9.12.0",
   "scripts": {
     "dev:web": "pnpm --filter @bingo/web dev",
     "dev:api": "pnpm --filter @bingo/api dev",
@@ -109,6 +108,8 @@ packages:
   }
 }
 ```
+
+> **Korrektur (während Task 1):** Kein `"packageManager"`-Feld setzen. Ein gepinntes `packageManager`-Feld lässt pnpm ≥10 beim ersten Aufruf versuchen, exakt diese Version von `registry.npmjs.org` nachzuladen (Corepack-artiges Verhalten) — das hängt bzw. schlägt in Umgebungen ohne Zugriff auf die npm-Registry fehl, auch wenn keine Dependencies installiert werden müssen. Genutzt wird stattdessen die lokal installierte pnpm-Version.
 
 - [ ] **Step 3: `tsconfig.base.json` anlegen**
 
