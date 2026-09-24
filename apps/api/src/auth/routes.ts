@@ -80,8 +80,16 @@ export async function registerAuthRoutes(
         return reply.redirect(`${webOrigin}/?error=oauth_exchange`);
       }
 
-      const user = await upsertUserFromTwitch(userInfo);
-      const session = await createSession(user.id);
+      let user;
+      let session;
+      try {
+        user = await upsertUserFromTwitch(userInfo);
+        session = await createSession(user.id);
+      } catch (err) {
+        request.log.error(err);
+        return reply.redirect(`${webOrigin}/?error=login_failed`);
+      }
+
       setSessionCookie(reply, session.id, session.expiresAt);
 
       return reply.redirect(`${webOrigin}/boards`);

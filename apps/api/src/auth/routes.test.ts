@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { describe, it, expect, afterEach } from "vitest";
 import { eq } from "drizzle-orm";
 import "../env";
@@ -72,6 +73,14 @@ describe("Auth-Routen", () => {
     expect(callbackResponse.headers.location).toContain("/boards");
     expect(extractCookie(callbackResponse.headers["set-cookie"], "session")).toBeTruthy();
 
+    const setCookieHeaders = callbackResponse.headers["set-cookie"];
+    const headers = Array.isArray(setCookieHeaders) ? setCookieHeaders : setCookieHeaders ? [setCookieHeaders] : [];
+    const sessionSetCookieHeader = headers.find((h) => h.startsWith("session="));
+    expect(sessionSetCookieHeader).toBeTruthy();
+    const lowerCasedHeader = sessionSetCookieHeader?.toLowerCase() ?? "";
+    expect(lowerCasedHeader).toContain("httponly");
+    expect(lowerCasedHeader).toContain("samesite=lax");
+
     const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
     expect(user).toBeDefined();
     createdUserIds.push(user.id);
@@ -136,6 +145,16 @@ describe("Auth-Routen", () => {
   it("GET /api/me liefert 401 ohne Session", async () => {
     const app = await buildServer();
     const response = await app.inject({ method: "GET", url: "/api/me" });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("GET /api/me liefert 401 bei manipuliertem Session-Cookie", async () => {
+    const app = await buildServer();
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/me",
+      cookies: { session: randomBytes(16).toString("hex") },
+    });
     expect(response.statusCode).toBe(401);
   });
 
