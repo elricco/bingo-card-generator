@@ -1646,8 +1646,15 @@ import type { RouteLocationNormalized } from "vue-router";
 import { requireAuthGuard } from "./index";
 
 function fakeRoute(requiresAuth: boolean): RouteLocationNormalized {
-  return { meta: { requiresAuth } } as RouteLocationNormalized;
+  return { meta: { requiresAuth } } as unknown as RouteLocationNormalized;
 }
+
+> **Korrektur (während Task 8 entdeckt):** Doppel-Cast über `unknown` nötig — ein
+> direkter `as RouteLocationNormalized`-Cast eines Objekts, das nur `meta` besitzt,
+> scheitert bei `vue-tsc --noEmit` mit TS2352 (zu geringe Typüberschneidung zum
+> vollständigen `RouteLocationNormalized`-Typ). `requireAuthGuard` liest ausschließlich
+> `to.meta.requiresAuth`, daher ist der Fake für den getesteten Codepfad vollständig —
+> der Doppel-Cast ist rein typseitig, keine Verhaltensänderung.
 
 describe("requireAuthGuard", () => {
   beforeEach(() => {
