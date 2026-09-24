@@ -77,15 +77,56 @@ describe("Auth-Routen", () => {
     createdUserIds.push(user.id);
   });
 
-  it("GET /auth/twitch/callback lehnt ein falsches state ab und redirected mit Fehler", async () => {
+  it("GET /auth/twitch/callback lehnt ein falsches state ab, redirected mit Fehler und legt keinen User an", async () => {
+    const twitchId = `routes-test-badstate-${Date.now()}`;
     const app = await buildServer({
-      authProvider: createFakeProvider({ providerId: "x", login: "x", displayName: "x", avatarUrl: null }),
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: "x",
+        displayName: "x",
+        avatarUrl: null,
+      }),
     });
 
     const response = await app.inject({
       method: "GET",
       url: "/auth/twitch/callback?code=whatever&state=falsch",
       cookies: { oauth_state: "richtig" },
+    });
+
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toContain("error=oauth_state");
+
+    const rows = await db.select().from(users).where(eq(users.twitchId, twitchId));
+    expect(rows).toEqual([]);
+  });
+
+  it("GET /auth/twitch/callback lehnt fehlendes oauth_state-Cookie ab und redirected mit Fehler", async () => {
+    const app = await buildServer({
+      authProvider: createFakeProvider({ providerId: "x", login: "x", displayName: "x", avatarUrl: null }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/auth/twitch/callback?code=whatever&state=sometoken",
+    });
+
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toContain("error=oauth_state");
+  });
+
+  it("GET /auth/twitch/callback lehnt fehlenden state-Query-Parameter ab und redirected mit Fehler", async () => {
+    const app = await buildServer({
+      authProvider: createFakeProvider({ providerId: "x", login: "x", displayName: "x", avatarUrl: null }),
+    });
+
+    const stateResponse = await app.inject({ method: "GET", url: "/auth/twitch" });
+    const stateCookie = extractCookie(stateResponse.headers["set-cookie"], "oauth_state");
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/auth/twitch/callback?code=whatever",
+      cookies: { oauth_state: stateCookie ?? "" },
     });
 
     expect(response.statusCode).toBe(302);
