@@ -2,8 +2,14 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import "./env";
+import { registerAuthRoutes } from "./auth/routes";
+import type { OAuthProvider } from "./auth/types";
 
-export async function buildServer() {
+export interface BuildServerOptions {
+  authProvider?: OAuthProvider;
+}
+
+export async function buildServer(options: BuildServerOptions = {}) {
   const app = Fastify({ logger: true });
 
   const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:5173";
@@ -19,6 +25,8 @@ export async function buildServer() {
   await app.register(cookie, { secret: sessionSecret });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  await registerAuthRoutes(app, { provider: options.authProvider });
 
   return app;
 }
