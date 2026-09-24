@@ -1,7 +1,22 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import "./env";
 
-export function buildServer() {
+export async function buildServer() {
   const app = Fastify({ logger: true });
+
+  const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:5173";
+  await app.register(cors, {
+    origin: webOrigin,
+    credentials: true,
+  });
+
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    throw new Error("SESSION_SECRET ist nicht gesetzt");
+  }
+  await app.register(cookie, { secret: sessionSecret });
 
   app.get("/health", async () => ({ status: "ok" }));
 
@@ -9,7 +24,7 @@ export function buildServer() {
 }
 
 async function main() {
-  const app = buildServer();
+  const app = await buildServer();
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: "0.0.0.0" });
 }
