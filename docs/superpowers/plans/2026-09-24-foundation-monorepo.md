@@ -682,10 +682,15 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "postgres://bingo:bingo@localhost:5432/bingo",
+    url: process.env.DATABASE_URL ?? "postgres://bingo:bingo@localhost:5433/bingo",
   },
 });
 ```
+
+> **Korrektur (finale Branch-Review):** Fallback-Port auf `5433` korrigiert, passend
+> zur Task-7-Korrektur weiter unten. Der ursprüngliche Wert `5432` hätte ohne gesetzte
+> `.env` versehentlich gegen die Postgres-Instanz eines anderen, fremden Projekts auf
+> diesem Rechner verbunden.
 
 - [ ] **Step 2: `apps/api/src/db/schema.ts` anlegen**
 
@@ -835,7 +840,7 @@ EOF
 
 **Interfaces:**
 - Consumes: `apps/api/drizzle.config.ts`, `apps/api/src/db/schema.ts` (Task 6)
-- Produces: laufende Postgres-Instanz auf `localhost:5432` mit angewendetem Schema — Grundlage für alle Folgepläne (Auth, Board-CRUD), die gegen `db` (Task 6) Queries ausführen
+- Produces: laufende Postgres-Instanz auf `localhost:5433` mit angewendetem Schema — Grundlage für alle Folgepläne (Auth, Board-CRUD), die gegen `db` (Task 6) Queries ausführen
 
 Hinweis: Der `app`-Service (API/Web als Container) wird bewusst noch nicht ergänzt — dafür fehlen bis Phase 8 noch Dockerfiles für `apps/api`/`apps/web`. Diese Compose-Datei deckt vorerst nur die lokale Postgres-Instanz für die Entwicklung ab.
 
