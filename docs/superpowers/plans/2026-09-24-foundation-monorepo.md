@@ -851,7 +851,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bingo}
       POSTGRES_DB: ${POSTGRES_DB:-bingo}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - bingo_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -864,6 +864,11 @@ volumes:
   bingo_postgres_data:
 ```
 
+> **Korrektur (während Task 7):** Host-Port auf `5433` gemappt statt `5432`. Auf der
+> Entwicklungsmaschine belegt bereits ein anderes, laufendes Projekt Port 5432
+> (`stock-portfolio-db`). Der Container-interne Port bleibt `5432`; nur die
+> Host-Seite ändert sich, entsprechend auch in `DATABASE_URL` unten.
+
 - [ ] **Step 2: `.env.example` anlegen**
 
 ```
@@ -871,7 +876,7 @@ volumes:
 POSTGRES_USER=bingo
 POSTGRES_PASSWORD=bingo
 POSTGRES_DB=bingo
-DATABASE_URL=postgres://bingo:bingo@localhost:5432/bingo
+DATABASE_URL=postgres://bingo:bingo@localhost:5433/bingo
 
 # API
 PORT=3001
