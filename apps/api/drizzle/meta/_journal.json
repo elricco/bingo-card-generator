@@ -8,6 +8,13 @@
       "when": 1790275668398,
       "tag": "0000_mature_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790290000000,
+      "tag": "0001_add_boards_check_constraints",
+      "breakpoints": true
     }
   ]
 }
