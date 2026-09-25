@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import "./env";
 import { registerAuthRoutes } from "./auth/routes";
+import { registerBoardRoutes } from "./boards/routes";
 import type { OAuthProvider } from "./auth/types";
 
 export interface BuildServerOptions {
@@ -27,6 +28,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
   app.get("/health", async () => ({ status: "ok" }));
 
   await registerAuthRoutes(app, { provider: options.authProvider });
+  await registerBoardRoutes(app);
 
   return app;
 }
