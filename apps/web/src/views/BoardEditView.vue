@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { onBeforeRouteLeave, useRoute } from "vue-router";
 import { getColumnLabels, getRowLabels, type LabelMode } from "@bingo/shared";
 import { useBoardsStore, type BoardDetail, type PatchBoardInput } from "../stores/boards";
 import { buildGridCells } from "../utils/grid";
@@ -139,7 +139,21 @@ async function handleSave() {
   }
 }
 
+onBeforeRouteLeave(() => {
+  if (isDirty.value) {
+    return window.confirm("Es gibt ungespeicherte Änderungen. Trotzdem verlassen?");
+  }
+  return true;
+});
+
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (isDirty.value) {
+    event.preventDefault();
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener("beforeunload", handleBeforeUnload);
   const id = route.params.id as string;
   const result = await boardsStore.fetchBoard(id);
   if (!result) {
@@ -147,6 +161,10 @@ onMounted(async () => {
     return;
   }
   applyBoard(result);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("beforeunload", handleBeforeUnload);
 });
 </script>
 
