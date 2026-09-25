@@ -6,6 +6,7 @@ import { buildServer } from "../server";
 import { db } from "../db/client";
 import { users } from "../db/schema";
 import { createFakeProvider, loginViaFakeProvider } from "../test-helpers/auth";
+import { subscribeToBoard } from "../events/board-events";
 
 describe("POST /api/boards", () => {
   const createdUserIds: string[] = [];
@@ -700,6 +701,31 @@ describe("PATCH /api/boards/:id", () => {
 
     expect(response.statusCode).toBe(400);
   });
+
+  it("veröffentlicht ein Board-Event mit dem aktuellen öffentlichen Zustand", async () => {
+    const twitchId = `patch-test-event-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const events: unknown[] = [];
+    const unsubscribe = subscribeToBoard(boardId, (payload) => events.push(payload));
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+      payload: { name: "Neuer Name" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ size: 3, labelMode: "letters" });
+    unsubscribe();
+  });
 });
 
 describe("PUT /api/boards/:id/cells/:row/:col/checked", () => {
@@ -945,5 +971,31 @@ describe("PUT /api/boards/:id/cells/:row/:col/checked", () => {
     });
 
     expect(response.statusCode).toBe(404);
+  });
+
+  it("veröffentlicht ein Board-Event mit dem aktualisierten Häkchen-Zustand", async () => {
+    const twitchId = `checked-test-event-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const events: Array<{ cells: Array<{ row: number; col: number; checked: boolean }> }> = [];
+    const unsubscribe = subscribeToBoard(boardId, (payload) => events.push(payload as never));
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/1/1/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(events).toHaveLength(1);
+    const publishedCell = events[0].cells.find((c) => c.row === 1 && c.col === 1);
+    expect(publishedCell?.checked).toBe(true);
+    unsubscribe();
   });
 });

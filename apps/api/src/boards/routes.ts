@@ -10,6 +10,8 @@ import {
   updateBoard,
   setCellChecked,
 } from "../db/boards";
+import { publishBoardEvent } from "../events/board-events";
+import { toPublicBoard } from "../overlay/public-board";
 
 const boardIdParamSchema = z.object({ id: z.string().uuid() });
 const cellCheckedParamsSchema = z.object({
@@ -119,6 +121,7 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
     if (!updated) {
       return reply.status(404).send({ error: "Board nicht gefunden" });
     }
+    publishBoardEvent(updated.id, toPublicBoard(updated));
     return updated;
   });
 
@@ -184,6 +187,10 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
       );
       if (!updatedCell) {
         return reply.status(404).send({ error: "Board nicht gefunden" });
+      }
+      const freshBoard = await getBoardById(user.id, paramsResult.data.id);
+      if (freshBoard) {
+        publishBoardEvent(freshBoard.id, toPublicBoard(freshBoard));
       }
       return updatedCell;
     }
