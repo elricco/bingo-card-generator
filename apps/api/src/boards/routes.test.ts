@@ -444,3 +444,238 @@ describe("DELETE /api/boards/:id", () => {
     expect(getResponse.statusCode).toBe(200);
   });
 });
+
+describe("PATCH /api/boards/:id", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const id of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+  });
+
+  async function createLoggedInUserWithBoard(
+    twitchId: string,
+    boardInput: Record<string, unknown>
+  ) {
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: twitchId,
+        displayName: twitchId,
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionCookie },
+      payload: boardInput,
+    });
+
+    return { app, sessionCookie, userId: user.id, boardId: createResponse.json().id };
+  }
+
+  it("aktualisiert den Namen", async () => {
+    const twitchId = `patch-test-name-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Alt",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+      payload: { name: "Neu" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().name).toBe("Neu");
+  });
+
+  it("aktualisiert label_mode und column_labels gemeinsam", async () => {
+    const twitchId = `patch-test-labelmode-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+      payload: { label_mode: "custom", column_labels: ["WIN", "GG", "GLHF"] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().labelMode).toBe("custom");
+    expect(response.json().columnLabels).toEqual(["WIN", "GG", "GLHF"]);
+  });
+
+  it("lehnt bingo-Modus bei size!=5 mit 400 ab", async () => {
+    const twitchId = `patch-test-bingo-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+      payload: { label_mode: "bingo" },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("aktualisiert Zelltext", async () => {
+    const twitchId = `patch-test-cells-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+      payload: { cells: [{ row: 1, col: 1, text: "Mitte" }] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const cell = (response.json().cells as Array<{ row: number; col: number; text: string }>).find(
+      (c) => c.row === 1 && c.col === 1
+    );
+    expect(cell?.text).toBe("Mitte");
+  });
+
+  it("lehnt Zellkoordinaten außerhalb des Boards mit 400 ab", async () => {
+    const twitchId = `patch-test-oob-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+      payload: { cells: [{ row: 5, col: 0, text: "x" }] },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("liefert 401 ohne Session", async () => {
+    const app = await buildServer();
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/boards/00000000-0000-0000-0000-000000000000",
+      payload: { name: "x" },
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("liefert 404 statt 403 für fremdes Board, ohne etwas zu ändern", async () => {
+    const twitchIdA = `patch-test-foreign-a-${Date.now()}`;
+    const twitchIdB = `patch-test-foreign-b-${Date.now()}`;
+    const { app: appA, sessionCookie: sessionA, userId: userIdA, boardId } =
+      await createLoggedInUserWithBoard(twitchIdA, {
+        name: "Board A",
+        size: 3,
+        label_mode: "letters",
+      });
+    createdUserIds.push(userIdA);
+
+    const appB = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdB,
+        login: "b",
+        displayName: "B",
+        avatarUrl: null,
+      }),
+    });
+    const sessionB = await loginViaFakeProvider(appB, {
+      providerId: twitchIdB,
+      login: "b",
+      displayName: "B",
+      avatarUrl: null,
+    });
+    const [userB] = await db.select().from(users).where(eq(users.twitchId, twitchIdB));
+    createdUserIds.push(userB.id);
+
+    const response = await appB.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionB },
+      payload: { name: "Übernommen" },
+    });
+
+    expect(response.statusCode).toBe(404);
+
+    const stillOriginal = await appA.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionA },
+    });
+    expect(stillOriginal.json().name).toBe("Board A");
+  });
+
+  it("liefert 404 für nicht existierendes Board", async () => {
+    const twitchId = `patch-test-missing-${Date.now()}`;
+    const { app, sessionCookie, userId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${randomUUID()}`,
+      cookies: { session: sessionCookie },
+      payload: { name: "x" },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("lehnt ungültigen Body mit 400 ab", async () => {
+    const twitchId = `patch-test-invalid-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+      payload: { name: "a".repeat(61) },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+});
