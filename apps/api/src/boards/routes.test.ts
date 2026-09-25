@@ -525,6 +525,27 @@ describe("PATCH /api/boards/:id", () => {
     expect(response.json().columnLabels).toEqual(["WIN", "GG", "GLHF"]);
   });
 
+  it("erlaubt den Wechsel von custom zurück zu letters ohne column_labels im Body", async () => {
+    const twitchId = `patch-test-custom-to-letters-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "custom",
+      column_labels: ["WIN", "GG", "GLHF"],
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+      payload: { label_mode: "letters" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().labelMode).toBe("letters");
+  });
+
   it("lehnt bingo-Modus bei size!=5 mit 400 ab", async () => {
     const twitchId = `patch-test-bingo-${Date.now()}`;
     const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {

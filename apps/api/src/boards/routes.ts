@@ -82,7 +82,8 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
 
     const effectiveLabelMode = bodyResult.data.label_mode ?? existingBoard.labelMode;
     const effectiveColumnLabels =
-      bodyResult.data.column_labels ?? existingBoard.columnLabels ?? undefined;
+      bodyResult.data.column_labels ??
+      (effectiveLabelMode === "custom" ? existingBoard.columnLabels ?? undefined : undefined);
     const labelError = validateLabelConfig(
       existingBoard.size,
       effectiveLabelMode,
