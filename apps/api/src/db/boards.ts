@@ -129,3 +129,32 @@ export async function updateBoard(userId: string, boardId: string, input: PatchB
     return { ...board, cells };
   });
 }
+
+export async function setCellChecked(
+  userId: string,
+  boardId: string,
+  row: number,
+  col: number,
+  checked: boolean
+) {
+  return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ id: boards.id })
+      .from(boards)
+      .where(and(eq(boards.id, boardId), eq(boards.userId, userId)));
+
+    if (!existing) {
+      return null;
+    }
+
+    const [cell] = await tx
+      .update(boardCells)
+      .set({ checked, checkedAt: checked ? new Date() : null })
+      .where(
+        and(eq(boardCells.boardId, boardId), eq(boardCells.row, row), eq(boardCells.col, col))
+      )
+      .returning();
+
+    return cell ?? null;
+  });
+}

@@ -10,6 +10,7 @@ import {
   getBoardById,
   deleteBoard,
   updateBoard,
+  setCellChecked,
 } from "./boards";
 
 async function createTestUser() {
@@ -278,5 +279,99 @@ describe("updateBoard", () => {
     expect(result).toBeNull();
     const stillOwned = await getBoardById(owner.id, board.id);
     expect(stillOwned?.name).toBe("Board");
+  });
+});
+
+describe("setCellChecked", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const userId of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, userId));
+    }
+  });
+
+  it("setzt checked=true und einen checkedAt-Zeitstempel", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const cell = await setCellChecked(user.id, board.id, 1, 1, true);
+
+    expect(cell?.checked).toBe(true);
+    expect(cell?.checkedAt).not.toBeNull();
+  });
+
+  it("setzt checked=false und löscht checkedAt", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    await setCellChecked(user.id, board.id, 1, 1, true);
+    const cell = await setCellChecked(user.id, board.id, 1, 1, false);
+
+    expect(cell?.checked).toBe(false);
+    expect(cell?.checkedAt).toBeNull();
+  });
+
+  it("lässt andere Zellen unverändert", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    await setCellChecked(user.id, board.id, 0, 0, true);
+
+    const cells = await db
+      .select()
+      .from(boardCells)
+      .where(and(eq(boardCells.boardId, board.id), eq(boardCells.row, 1), eq(boardCells.col, 1)));
+    expect(cells[0].checked).toBe(false);
+  });
+
+  it("ist idempotent (mehrfaches Setzen desselben Zielzustands erzeugt keinen Fehler)", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    await setCellChecked(user.id, board.id, 2, 2, true);
+    const cell = await setCellChecked(user.id, board.id, 2, 2, true);
+
+    expect(cell?.checked).toBe(true);
+  });
+
+  it("liefert null für ein Board eines fremden Users, ohne etwas zu ändern", async () => {
+    const owner = await createTestUser();
+    const other = await createTestUser();
+    createdUserIds.push(owner.id, other.id);
+    const board = await createBoardWithCells(owner.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const cell = await setCellChecked(other.id, board.id, 0, 0, true);
+
+    expect(cell).toBeNull();
+    const stillUnchecked = await db
+      .select()
+      .from(boardCells)
+      .where(and(eq(boardCells.boardId, board.id), eq(boardCells.row, 0), eq(boardCells.col, 0)));
+    expect(stillUnchecked[0].checked).toBe(false);
   });
 });
