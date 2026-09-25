@@ -18,6 +18,32 @@ export interface CreateBoardInput {
   column_labels?: string[];
 }
 
+export interface CellData {
+  row: number;
+  col: number;
+  text: string;
+  checked: boolean;
+}
+
+export interface BoardDetail {
+  id: string;
+  name: string;
+  size: number;
+  labelMode: string;
+  columnLabels: string[] | null;
+  overlayToken: string;
+  createdAt: string;
+  updatedAt: string;
+  cells: CellData[];
+}
+
+export interface PatchBoardInput {
+  name?: string;
+  label_mode?: string;
+  column_labels?: string[];
+  cells?: Array<{ row: number; col: number; text: string }>;
+}
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:3001";
 
 export const useBoardsStore = defineStore("boards", {
@@ -61,6 +87,30 @@ export const useBoardsStore = defineStore("boards", {
         throw new Error("Board konnte nicht gelöscht werden");
       }
       this.boards = this.boards.filter((board) => board.id !== id);
+    },
+    async fetchBoard(id: string): Promise<BoardDetail | null> {
+      const response = await fetch(`${API_BASE_URL}/api/boards/${id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        return null;
+      }
+      return (await response.json()) as BoardDetail;
+    },
+    async updateBoard(id: string, input: PatchBoardInput): Promise<BoardDetail> {
+      const response = await fetch(`${API_BASE_URL}/api/boards/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(
+          typeof body?.error === "string" ? body.error : "Board konnte nicht gespeichert werden"
+        );
+      }
+      return (await response.json()) as BoardDetail;
     },
   },
 });

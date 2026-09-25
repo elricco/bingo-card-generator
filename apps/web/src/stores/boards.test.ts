@@ -90,4 +90,79 @@ describe("useBoardsStore", () => {
 
     expect(store.boards).toHaveLength(1);
   });
+
+  describe("fetchBoard", () => {
+    it("liefert das Board bei erfolgreicher Antwort", async () => {
+      const detail = {
+        id: "b1",
+        name: "Board",
+        size: 3,
+        labelMode: "letters",
+        columnLabels: null,
+        overlayToken: "token",
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+        cells: [],
+      };
+      vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => detail } as Response);
+
+      const store = useBoardsStore();
+      const result = await store.fetchBoard("b1");
+
+      expect(result).toEqual(detail);
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/boards/b1"),
+        expect.objectContaining({ credentials: "include" })
+      );
+    });
+
+    it("liefert null bei Fehlerantwort", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, json: async () => ({}) } as Response);
+
+      const store = useBoardsStore();
+      const result = await store.fetchBoard("b1");
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("updateBoard", () => {
+    it("sendet PATCH mit korrektem Body und liefert das aktualisierte Board", async () => {
+      const updated = {
+        id: "b1",
+        name: "Neuer Name",
+        size: 3,
+        labelMode: "letters",
+        columnLabels: null,
+        overlayToken: "token",
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-02T00:00:00Z",
+        cells: [],
+      };
+      vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => updated } as Response);
+
+      const store = useBoardsStore();
+      const result = await store.updateBoard("b1", { name: "Neuer Name" });
+
+      expect(result).toEqual(updated);
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/boards/b1"),
+        expect.objectContaining({
+          method: "PATCH",
+          credentials: "include",
+          body: JSON.stringify({ name: "Neuer Name" }),
+        })
+      );
+    });
+
+    it("wirft bei Fehlerantwort mit der Server-Fehlermeldung", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Ungültige Eingabe" }),
+      } as Response);
+
+      const store = useBoardsStore();
+      await expect(store.updateBoard("b1", { name: "x" })).rejects.toThrow("Ungültige Eingabe");
+    });
+  });
 });
