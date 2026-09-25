@@ -13,6 +13,7 @@ function createTestRouter() {
       { path: "/", name: "home", component: { template: "<div />" } },
       { path: "/boards/new", name: "board-new", component: { template: "<div />" } },
       { path: "/boards/:id/edit", name: "board-edit", component: { template: "<div />" } },
+      { path: "/boards/:id/play", name: "board-play", component: { template: "<div />" } },
     ],
   });
 }
@@ -59,6 +60,24 @@ describe("BoardsView", () => {
     expect(wrapper.text()).toContain("Board Eins");
     expect(wrapper.text()).toContain("3×3");
     expect(wrapper.text()).toContain("2 abgehakt");
+  });
+
+  it("zeigt einen Link zur Control-Seite pro Board", async () => {
+    const router = createTestRouter();
+    const auth = useAuthStore();
+    const boardsStore = useBoardsStore();
+    auth.user = { id: "1", login: "x", displayName: "Streamerin", avatarUrl: null };
+    boardsStore.boards = [
+      { id: "b1", name: "Board Eins", size: 3, checkedCount: 2 } as never,
+    ];
+
+    const wrapper = mount(BoardsView, { global: { plugins: [router] } });
+    await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const playLink = wrapper.find('a[href="/boards/b1/play"]');
+    expect(playLink.exists()).toBe(true);
+    expect(playLink.text()).toContain("Spielen");
   });
 
   it("zeigt Leerzustand ohne Boards", async () => {

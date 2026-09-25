@@ -77,6 +77,12 @@ async function handleDelete(id: string) {
           </div>
           <div class="flex gap-2">
             <RouterLink
+              :to="`/boards/${board.id}/play`"
+              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+            >
+              Spielen
+            </RouterLink>
+            <RouterLink
               :to="`/boards/${board.id}/edit`"
               class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
             >
