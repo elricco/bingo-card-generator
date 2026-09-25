@@ -207,16 +207,16 @@ onUnmounted(() => {
         :style="{ gridTemplateColumns: `repeat(${board.size + 2}, minmax(2.5rem, 1fr))` }"
       >
         <template v-for="(gridCell, index) in gridCells" :key="index">
-          <div v-if="gridCell.kind === 'empty'" />
+          <div v-if="gridCell.kind === 'empty'" class="aspect-square" />
           <div
             v-else-if="gridCell.kind === 'label'"
-            class="flex items-center justify-center font-semibold"
+            class="flex aspect-square items-center justify-center font-semibold"
           >
             {{ gridCell.text }}
           </div>
           <div
             v-else
-            class="min-h-16 rounded bg-slate-800 p-1 text-center text-sm"
+            class="flex aspect-square items-center justify-center rounded bg-slate-800 p-1 text-center text-sm"
             @click="!isEditing(gridCell.row, gridCell.col) && startEditing(gridCell.row, gridCell.col)"
           >
             <textarea
