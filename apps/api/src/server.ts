@@ -4,6 +4,7 @@ import cookie from "@fastify/cookie";
 import "./env";
 import { registerAuthRoutes } from "./auth/routes";
 import { registerBoardRoutes } from "./boards/routes";
+import { registerOverlayRoutes } from "./overlay/routes";
 import type { OAuthProvider } from "./auth/types";
 
 export interface BuildServerOptions {
@@ -29,6 +30,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
 
   await registerAuthRoutes(app, { provider: options.authProvider });
   await registerBoardRoutes(app);
+  await registerOverlayRoutes(app);
 
   return app;
 }
