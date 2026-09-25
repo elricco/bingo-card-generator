@@ -3,6 +3,7 @@ import HomeView from "../views/HomeView.vue";
 import BoardsView from "../views/BoardsView.vue";
 import NewBoardView from "../views/NewBoardView.vue";
 import BoardEditView from "../views/BoardEditView.vue";
+import ControlView from "../views/ControlView.vue";
 import { useAuthStore } from "../stores/auth";
 
 export const router = createRouter({
@@ -15,6 +16,12 @@ export const router = createRouter({
       path: "/boards/:id/edit",
       name: "board-edit",
       component: BoardEditView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/boards/:id/play",
+      name: "board-play",
+      component: ControlView,
       meta: { requiresAuth: true },
     },
   ],
