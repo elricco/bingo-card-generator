@@ -165,4 +165,35 @@ describe("useBoardsStore", () => {
       await expect(store.updateBoard("b1", { name: "x" })).rejects.toThrow("Ungültige Eingabe");
     });
   });
+
+  describe("setCellChecked", () => {
+    it("sendet PUT mit korrektem Body an den Checked-Endpoint", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ row: 1, col: 1, text: "", checked: true, checkedAt: "2024-01-01T00:00:00Z" }),
+      } as Response);
+
+      const store = useBoardsStore();
+      await store.setCellChecked("b1", 1, 1, true);
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/boards/b1/cells/1/1/checked"),
+        expect.objectContaining({
+          method: "PUT",
+          credentials: "include",
+          body: JSON.stringify({ checked: true }),
+        })
+      );
+    });
+
+    it("wirft bei Fehlerantwort mit der Server-Fehlermeldung", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Ungültige Eingabe" }),
+      } as Response);
+
+      const store = useBoardsStore();
+      await expect(store.setCellChecked("b1", 1, 1, true)).rejects.toThrow("Ungültige Eingabe");
+    });
+  });
 });

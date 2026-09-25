@@ -112,5 +112,27 @@ export const useBoardsStore = defineStore("boards", {
       }
       return (await response.json()) as BoardDetail;
     },
+    async setCellChecked(
+      boardId: string,
+      row: number,
+      col: number,
+      checked: boolean
+    ): Promise<void> {
+      const response = await fetch(
+        `${API_BASE_URL}/api/boards/${boardId}/cells/${row}/${col}/checked`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checked }),
+        }
+      );
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(
+          typeof body?.error === "string" ? body.error : "Häkchen konnte nicht gespeichert werden"
+        );
+      }
+    },
   },
 });
