@@ -64,6 +64,19 @@ describe("createBoardSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("lehnt column_labels bei nicht-custom-Modus ab", () => {
+    const result = createBoardSchema.safeParse({
+      name: "Mein Board",
+      size: 3,
+      label_mode: "letters",
+      column_labels: ["a", "b", "c"],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toEqual(["column_labels"]);
+    }
+  });
+
   it("lehnt leeren Namen ab", () => {
     const result = createBoardSchema.safeParse({
       name: "",

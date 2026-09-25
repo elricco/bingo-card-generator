@@ -77,6 +77,9 @@ describe("POST /api/boards", () => {
     });
 
     expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.error).toBe("Ungültige Eingabe");
+    expect(typeof body.details).toBe("object");
   });
 
   it("liefert 401 ohne Session", async () => {

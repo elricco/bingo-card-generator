@@ -24,6 +24,12 @@ export const createBoardSchema = z
           path: ["column_labels"],
         });
       }
+    } else if (data.column_labels !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'column_labels ist nur bei label_mode="custom" erlaubt',
+        path: ["column_labels"],
+      });
     }
   });
 

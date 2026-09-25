@@ -53,10 +53,13 @@ export const useBoardsStore = defineStore("boards", {
       return (await response.json()) as Board;
     },
     async deleteBoard(id: string) {
-      await fetch(`${API_BASE_URL}/api/boards/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/boards/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Board konnte nicht gelöscht werden");
+      }
       this.boards = this.boards.filter((board) => board.id !== id);
     },
   },

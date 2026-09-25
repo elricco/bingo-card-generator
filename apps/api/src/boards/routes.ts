@@ -15,7 +15,9 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
 
     const parseResult = createBoardSchema.safeParse(request.body);
     if (!parseResult.success) {
-      return reply.status(400).send({ error: parseResult.error.flatten() });
+      return reply
+        .status(400)
+        .send({ error: "Ungültige Eingabe", details: parseResult.error.flatten() });
     }
 
     const board = await createBoardWithCells(user.id, parseResult.data);

@@ -56,13 +56,13 @@ describe("useBoardsStore", () => {
   it("createBoard wirft bei Fehlerantwort", async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: false,
-      json: async () => ({ error: "ungültig" }),
+      json: async () => ({ error: "Ungültige Eingabe", details: { formErrors: [], fieldErrors: {} } }),
     } as Response);
 
     const store = useBoardsStore();
     await expect(
       store.createBoard({ name: "Neu", size: 3, label_mode: "letters" })
-    ).rejects.toThrow();
+    ).rejects.toThrow("Ungültige Eingabe");
   });
 
   it("deleteBoard sendet DELETE und entfernt das Board aus dem State", async () => {
@@ -78,5 +78,16 @@ describe("useBoardsStore", () => {
       expect.stringContaining("/api/boards/1"),
       expect.objectContaining({ method: "DELETE", credentials: "include" })
     );
+  });
+
+  it("deleteBoard wirft bei Serverfehler und entfernt das Board nicht aus dem State", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 500, json: async () => ({}) } as Response);
+
+    const store = useBoardsStore();
+    store.boards = [{ id: "1", name: "Test", size: 3, checkedCount: 0 } as never];
+
+    await expect(store.deleteBoard("1")).rejects.toThrow();
+
+    expect(store.boards).toHaveLength(1);
   });
 });
