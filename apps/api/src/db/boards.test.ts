@@ -9,6 +9,7 @@ import {
   listBoardsForUser,
   getBoardById,
   deleteBoard,
+  updateBoard,
 } from "./boards";
 
 async function createTestUser() {
@@ -161,5 +162,121 @@ describe("Board-DB-Helfer", () => {
     expect(deleted).toBe(false);
     const [row] = await db.select().from(boards).where(eq(boards.id, board.id));
     expect(row).toBeDefined();
+  });
+});
+
+describe("updateBoard", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const userId of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, userId));
+    }
+  });
+
+  it("aktualisiert nur den Namen, andere Felder bleiben unverändert", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Alt",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const result = await updateBoard(user.id, board.id, { name: "Neu" });
+
+    expect(result?.name).toBe("Neu");
+    expect(result?.labelMode).toBe("letters");
+  });
+
+  it("aktualisiert label_mode und column_labels gemeinsam", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const result = await updateBoard(user.id, board.id, {
+      label_mode: "custom",
+      column_labels: ["WIN", "GG", "GLHF"],
+    });
+
+    expect(result?.labelMode).toBe("custom");
+    expect(result?.columnLabels).toEqual(["WIN", "GG", "GLHF"]);
+  });
+
+  it("aktualisiert den Text einer einzelnen Zelle, andere bleiben unverändert", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const result = await updateBoard(user.id, board.id, {
+      cells: [{ row: 1, col: 1, text: "Mittelfeld" }],
+    });
+
+    const updatedCell = result?.cells.find((c) => c.row === 1 && c.col === 1);
+    const otherCell = result?.cells.find((c) => c.row === 0 && c.col === 0);
+    expect(updatedCell?.text).toBe("Mittelfeld");
+    expect(otherCell?.text).toBe("");
+  });
+
+  it("aktualisiert mehrere Zellen in einem Aufruf", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const result = await updateBoard(user.id, board.id, {
+      cells: [
+        { row: 0, col: 0, text: "A" },
+        { row: 2, col: 2, text: "B" },
+      ],
+    });
+
+    expect(result?.cells.find((c) => c.row === 0 && c.col === 0)?.text).toBe("A");
+    expect(result?.cells.find((c) => c.row === 2 && c.col === 2)?.text).toBe("B");
+  });
+
+  it("bumpt updatedAt", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const result = await updateBoard(user.id, board.id, { name: "Neu" });
+
+    expect(new Date(result!.updatedAt).getTime()).toBeGreaterThan(
+      new Date(board.updatedAt).getTime()
+    );
+  });
+
+  it("liefert null für ein Board eines fremden Users, ohne etwas zu ändern", async () => {
+    const owner = await createTestUser();
+    const other = await createTestUser();
+    createdUserIds.push(owner.id, other.id);
+    const board = await createBoardWithCells(owner.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const result = await updateBoard(other.id, board.id, { name: "Gehackt" });
+
+    expect(result).toBeNull();
+    const stillOwned = await getBoardById(owner.id, board.id);
+    expect(stillOwned?.name).toBe("Board");
   });
 });

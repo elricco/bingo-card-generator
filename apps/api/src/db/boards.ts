@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "./client";
 import { boards, boardCells } from "./schema";
-import type { CreateBoardInput } from "@bingo/shared";
+import type { CreateBoardInput, PatchBoardInput } from "@bingo/shared";
 
 export async function createBoardWithCells(userId: string, input: CreateBoardInput) {
   const overlayToken = randomBytes(16).toString("base64url");
@@ -73,4 +73,56 @@ export async function deleteBoard(userId: string, boardId: string): Promise<bool
     .returning({ id: boards.id });
 
   return deleted.length > 0;
+}
+
+export async function updateBoard(userId: string, boardId: string, input: PatchBoardInput) {
+  return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ id: boards.id })
+      .from(boards)
+      .where(and(eq(boards.id, boardId), eq(boards.userId, userId)));
+
+    if (!existing) {
+      return null;
+    }
+
+    const boardUpdates: Record<string, unknown> = { updatedAt: new Date() };
+    if (input.name !== undefined) {
+      boardUpdates.name = input.name;
+    }
+    if (input.label_mode !== undefined) {
+      boardUpdates.labelMode = input.label_mode;
+    }
+    if (input.column_labels !== undefined) {
+      boardUpdates.columnLabels = input.column_labels;
+    }
+
+    await tx
+      .update(boards)
+      .set(boardUpdates)
+      .where(and(eq(boards.id, boardId), eq(boards.userId, userId)));
+
+    if (input.cells) {
+      for (const cell of input.cells) {
+        await tx
+          .update(boardCells)
+          .set({ text: cell.text })
+          .where(
+            and(
+              eq(boardCells.boardId, boardId),
+              eq(boardCells.row, cell.row),
+              eq(boardCells.col, cell.col)
+            )
+          );
+      }
+    }
+
+    const [board] = await tx
+      .select()
+      .from(boards)
+      .where(and(eq(boards.id, boardId), eq(boards.userId, userId)));
+    const cells = await tx.select().from(boardCells).where(eq(boardCells.boardId, boardId));
+
+    return { ...board, cells };
+  });
 }
