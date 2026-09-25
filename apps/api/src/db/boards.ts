@@ -7,27 +7,29 @@ import type { CreateBoardInput } from "@bingo/shared";
 export async function createBoardWithCells(userId: string, input: CreateBoardInput) {
   const overlayToken = randomBytes(16).toString("base64url");
 
-  const [board] = await db
-    .insert(boards)
-    .values({
-      userId,
-      name: input.name,
-      size: input.size,
-      labelMode: input.label_mode,
-      columnLabels: input.column_labels ?? null,
-      overlayToken,
-    })
-    .returning();
+  return db.transaction(async (tx) => {
+    const [board] = await tx
+      .insert(boards)
+      .values({
+        userId,
+        name: input.name,
+        size: input.size,
+        labelMode: input.label_mode,
+        columnLabels: input.column_labels ?? null,
+        overlayToken,
+      })
+      .returning();
 
-  const cellRows: Array<{ boardId: string; row: number; col: number }> = [];
-  for (let row = 0; row < input.size; row++) {
-    for (let col = 0; col < input.size; col++) {
-      cellRows.push({ boardId: board.id, row, col });
+    const cellRows: Array<{ boardId: string; row: number; col: number }> = [];
+    for (let row = 0; row < input.size; row++) {
+      for (let col = 0; col < input.size; col++) {
+        cellRows.push({ boardId: board.id, row, col });
+      }
     }
-  }
-  await db.insert(boardCells).values(cellRows);
+    await tx.insert(boardCells).values(cellRows);
 
-  return board;
+    return board;
+  });
 }
 
 export async function listBoardsForUser(userId: string) {
