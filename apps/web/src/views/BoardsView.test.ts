@@ -79,9 +79,10 @@ describe("BoardsView", () => {
     const boardsStore = useBoardsStore();
     auth.user = { id: "1", login: "x", displayName: "Streamerin", avatarUrl: null };
     boardsStore.boards = [{ id: "b1", name: "Board Eins", size: 3, checkedCount: 0 } as never];
-    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => [] } as Response);
 
     const wrapper = mount(BoardsView, { global: { plugins: [router] } });
+    await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await wrapper.find("button.bg-red-700").trigger("click");
     await new Promise((resolve) => setTimeout(resolve, 0));
 
