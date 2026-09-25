@@ -11,6 +11,7 @@ import {
   deleteBoard,
   updateBoard,
   setCellChecked,
+  getBoardByOverlayToken,
 } from "./boards";
 
 async function createTestUser() {
@@ -373,5 +374,36 @@ describe("setCellChecked", () => {
       .from(boardCells)
       .where(and(eq(boardCells.boardId, board.id), eq(boardCells.row, 0), eq(boardCells.col, 0)));
     expect(stillUnchecked[0].checked).toBe(false);
+  });
+});
+
+describe("getBoardByOverlayToken", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const userId of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, userId));
+    }
+  });
+
+  it("liefert das Board inkl. Zellen für einen gültigen Token", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const result = await getBoardByOverlayToken(board.overlayToken);
+
+    expect(result?.id).toBe(board.id);
+    expect(result?.cells).toHaveLength(9);
+  });
+
+  it("liefert null für einen ungültigen Token", async () => {
+    const result = await getBoardByOverlayToken("token-existiert-nicht");
+
+    expect(result).toBeNull();
   });
 });

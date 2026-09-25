@@ -158,3 +158,15 @@ export async function setCellChecked(
     return cell ?? null;
   });
 }
+
+export async function getBoardByOverlayToken(token: string) {
+  const [board] = await db.select().from(boards).where(eq(boards.overlayToken, token));
+
+  if (!board) {
+    return null;
+  }
+
+  const cells = await db.select().from(boardCells).where(eq(boardCells.boardId, board.id));
+
+  return { ...board, cells };
+}
