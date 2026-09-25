@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteLocationNormalized } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import BoardsView from "../views/BoardsView.vue";
+import NewBoardView from "../views/NewBoardView.vue";
 import { useAuthStore } from "../stores/auth";
 
 export const router = createRouter({
@@ -8,6 +9,7 @@ export const router = createRouter({
   routes: [
     { path: "/", name: "home", component: HomeView },
     { path: "/boards", name: "boards", component: BoardsView, meta: { requiresAuth: true } },
+    { path: "/boards/new", name: "board-new", component: NewBoardView, meta: { requiresAuth: true } },
   ],
 });
 
