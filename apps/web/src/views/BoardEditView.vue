@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { getColumnLabels, getRowLabels, type LabelMode } from "@bingo/shared";
-import { useBoardsStore, type BoardDetail } from "../stores/boards";
+import { useBoardsStore, type BoardDetail, type PatchBoardInput } from "../stores/boards";
 import { buildGridCells } from "../utils/grid";
 
 const route = useRoute();
@@ -13,6 +13,10 @@ const notFound = ref(false);
 const name = ref("");
 const labelMode = ref<LabelMode>("letters");
 const columnLabels = ref<string[]>([]);
+const cellTexts = reactive<Record<string, string>>({});
+const editingCell = ref<{ row: number; col: number } | null>(null);
+const isSaving = ref(false);
+const saveError = ref<string | null>(null);
 
 const canUseBingo = computed(() => board.value?.size === 5);
 
@@ -48,8 +52,91 @@ const gridCells = computed(() =>
     : []
 );
 
-function cellText(row: number, col: number): string {
-  return board.value?.cells.find((c) => c.row === row && c.col === col)?.text ?? "";
+function cellKey(row: number, col: number): string {
+  return `${row}-${col}`;
+}
+
+function isEditing(row: number, col: number): boolean {
+  return editingCell.value?.row === row && editingCell.value?.col === col;
+}
+
+async function startEditing(row: number, col: number) {
+  editingCell.value = { row, col };
+  await nextTick();
+  document.querySelector<HTMLTextAreaElement>(`textarea[data-cell="${cellKey(row, col)}"]`)?.focus();
+}
+
+function stopEditing() {
+  editingCell.value = null;
+}
+
+const isDirty = computed(() => {
+  if (!board.value) {
+    return false;
+  }
+  if (name.value !== board.value.name) {
+    return true;
+  }
+  if (labelMode.value !== board.value.labelMode) {
+    return true;
+  }
+  if (
+    labelMode.value === "custom" &&
+    JSON.stringify(columnLabels.value) !== JSON.stringify(board.value.columnLabels ?? [])
+  ) {
+    return true;
+  }
+  return board.value.cells.some(
+    (cell) => (cellTexts[cellKey(cell.row, cell.col)] ?? "") !== cell.text
+  );
+});
+
+function applyBoard(result: BoardDetail) {
+  board.value = result;
+  name.value = result.name;
+  labelMode.value = result.labelMode as LabelMode;
+  columnLabels.value = result.columnLabels ?? [];
+  for (const cell of result.cells) {
+    cellTexts[cellKey(cell.row, cell.col)] = cell.text;
+  }
+}
+
+async function handleSave() {
+  if (!board.value) {
+    return;
+  }
+  isSaving.value = true;
+  saveError.value = null;
+  try {
+    const changedCells = board.value.cells
+      .filter((cell) => (cellTexts[cellKey(cell.row, cell.col)] ?? "") !== cell.text)
+      .map((cell) => ({
+        row: cell.row,
+        col: cell.col,
+        text: cellTexts[cellKey(cell.row, cell.col)] ?? "",
+      }));
+
+    const payload: PatchBoardInput = {};
+    if (name.value !== board.value.name) {
+      payload.name = name.value;
+    }
+    if (labelMode.value !== board.value.labelMode) {
+      payload.label_mode = labelMode.value;
+    }
+    if (labelMode.value === "custom") {
+      payload.column_labels = columnLabels.value;
+    }
+    if (changedCells.length > 0) {
+      payload.cells = changedCells;
+    }
+
+    const updated = await boardsStore.updateBoard(board.value.id, payload);
+    applyBoard(updated);
+  } catch (err) {
+    saveError.value = err instanceof Error ? err.message : "Speichern fehlgeschlagen";
+  } finally {
+    isSaving.value = false;
+  }
 }
 
 onMounted(async () => {
@@ -59,10 +146,7 @@ onMounted(async () => {
     notFound.value = true;
     return;
   }
-  board.value = result;
-  name.value = result.name;
-  labelMode.value = result.labelMode as LabelMode;
-  columnLabels.value = result.columnLabels ?? [];
+  applyBoard(result);
 });
 </script>
 
@@ -97,7 +181,7 @@ onMounted(async () => {
       </div>
 
       <div
-        class="grid gap-1"
+        class="mb-4 grid gap-1"
         :style="{ gridTemplateColumns: `repeat(${board.size + 2}, minmax(2.5rem, 1fr))` }"
       >
         <template v-for="(gridCell, index) in gridCells" :key="index">
@@ -110,12 +194,31 @@ onMounted(async () => {
           </div>
           <div
             v-else
-            class="flex min-h-16 items-center justify-center rounded bg-slate-800 p-1 text-center text-sm"
+            class="min-h-16 rounded bg-slate-800 p-1 text-center text-sm"
+            @click="!isEditing(gridCell.row, gridCell.col) && startEditing(gridCell.row, gridCell.col)"
           >
-            {{ cellText(gridCell.row, gridCell.col) }}
+            <textarea
+              v-if="isEditing(gridCell.row, gridCell.col)"
+              v-model="cellTexts[cellKey(gridCell.row, gridCell.col)]"
+              :data-cell="cellKey(gridCell.row, gridCell.col)"
+              maxlength="80"
+              class="h-full w-full resize-none bg-slate-700 p-1 text-center text-sm"
+              @blur="stopEditing"
+              @keydown.esc="stopEditing"
+            />
+            <span v-else>{{ cellTexts[cellKey(gridCell.row, gridCell.col)] }}</span>
           </div>
         </template>
       </div>
+
+      <p v-if="saveError" class="mb-2 text-red-400">{{ saveError }}</p>
+      <button
+        :disabled="isSaving"
+        class="rounded bg-purple-600 px-4 py-2 font-semibold hover:bg-purple-700"
+        @click="handleSave"
+      >
+        Speichern
+      </button>
     </div>
     <p v-else>Lade...</p>
   </main>

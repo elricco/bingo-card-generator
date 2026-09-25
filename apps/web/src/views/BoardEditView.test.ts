@@ -83,4 +83,94 @@ describe("BoardEditView", () => {
 
     expect(wrapper.text()).toContain("nicht gefunden");
   });
+
+  it("öffnet beim Klick eine Textarea mit dem aktuellen Zelltext", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => sampleBoard } as Response);
+    const router = createTestRouter();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(BoardEditView, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const cells = wrapper.findAll(".bg-slate-800.p-1");
+    await cells[0].trigger("click");
+
+    const textarea = wrapper.find("textarea");
+    expect((textarea.element as HTMLTextAreaElement).value).toBe("Erste Zelle");
+  });
+
+  it("übernimmt den Text beim Blur und schließt die Textarea", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => sampleBoard } as Response);
+    const router = createTestRouter();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(BoardEditView, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const cells = wrapper.findAll(".bg-slate-800.p-1");
+    await cells[0].trigger("click");
+    const textarea = wrapper.find("textarea");
+    await textarea.setValue("Neuer Text");
+    await textarea.trigger("blur");
+
+    expect(wrapper.find("textarea").exists()).toBe(false);
+    expect(wrapper.text()).toContain("Neuer Text");
+  });
+
+  it("speichert nur geänderte Felder und Zellen via PATCH", async () => {
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      const method = ((options as RequestInit)?.method ?? "GET").toUpperCase();
+      if (method === "PATCH") {
+        return {
+          ok: true,
+          json: async () => ({
+            ...sampleBoard,
+            name: "Neuer Name",
+            cells: sampleBoard.cells,
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => sampleBoard } as Response;
+    });
+
+    const router = createTestRouter();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(BoardEditView, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await wrapper.find("input[type=text]").setValue("Neuer Name");
+    await wrapper.find("button").trigger("click");
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/boards/b1"),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ name: "Neuer Name" }),
+      })
+    );
+  });
+
+  it("zeigt eine Fehlermeldung, wenn das Speichern fehlschlägt", async () => {
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      const method = ((options as RequestInit)?.method ?? "GET").toUpperCase();
+      if (method === "PATCH") {
+        return { ok: false, json: async () => ({ error: "Serverfehler" }) } as Response;
+      }
+      return { ok: true, json: async () => sampleBoard } as Response;
+    });
+
+    const router = createTestRouter();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(BoardEditView, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await wrapper.find("input[type=text]").setValue("Neuer Name");
+    await wrapper.find("button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Serverfehler");
+  });
 });
