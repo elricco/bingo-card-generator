@@ -701,3 +701,249 @@ describe("PATCH /api/boards/:id", () => {
     expect(response.statusCode).toBe(400);
   });
 });
+
+describe("PUT /api/boards/:id/cells/:row/:col/checked", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const id of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+  });
+
+  async function createLoggedInUserWithBoard(
+    twitchId: string,
+    boardInput: Record<string, unknown>
+  ) {
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: twitchId,
+        displayName: twitchId,
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionCookie },
+      payload: boardInput,
+    });
+
+    return { app, sessionCookie, userId: user.id, boardId: createResponse.json().id };
+  }
+
+  it("setzt checked=true", async () => {
+    const twitchId = `checked-test-true-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/1/1/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().checked).toBe(true);
+    expect(response.json().checkedAt).not.toBeNull();
+  });
+
+  it("setzt checked=false", async () => {
+    const twitchId = `checked-test-false-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/1/1/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/1/1/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: false },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().checked).toBe(false);
+    expect(response.json().checkedAt).toBeNull();
+  });
+
+  it("ist idempotent bei wiederholtem Setzen desselben Zielzustands", async () => {
+    const twitchId = `checked-test-idempotent-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const first = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/0/0/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+    const second = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/0/0/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(second.json().checked).toBe(true);
+  });
+
+  it("lehnt Zellkoordinaten außerhalb des Boards mit 400 ab", async () => {
+    const twitchId = `checked-test-oob-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/5/0/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("lehnt einen ungültigen Body mit 400 ab", async () => {
+    const twitchId = `checked-test-invalid-body-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/0/0/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: "ja" },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("liefert 401 ohne Session", async () => {
+    const app = await buildServer();
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/boards/00000000-0000-0000-0000-000000000000/cells/0/0/checked",
+      payload: { checked: true },
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("liefert 404 statt 403 für fremdes Board, ohne etwas zu ändern", async () => {
+    const twitchIdA = `checked-test-foreign-a-${Date.now()}`;
+    const twitchIdB = `checked-test-foreign-b-${Date.now()}`;
+    const { app: appA, sessionCookie: sessionA, userId: userIdA, boardId } =
+      await createLoggedInUserWithBoard(twitchIdA, {
+        name: "Board A",
+        size: 3,
+        label_mode: "letters",
+      });
+    createdUserIds.push(userIdA);
+
+    const appB = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdB,
+        login: "b",
+        displayName: "B",
+        avatarUrl: null,
+      }),
+    });
+    const sessionB = await loginViaFakeProvider(appB, {
+      providerId: twitchIdB,
+      login: "b",
+      displayName: "B",
+      avatarUrl: null,
+    });
+    const [userB] = await db.select().from(users).where(eq(users.twitchId, twitchIdB));
+    createdUserIds.push(userB.id);
+
+    const response = await appB.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/0/0/checked`,
+      cookies: { session: sessionB },
+      payload: { checked: true },
+    });
+
+    expect(response.statusCode).toBe(404);
+
+    const getResponse = await appA.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionA },
+    });
+    expect(getResponse.json().cells.find((c: { row: number; col: number }) => c.row === 0 && c.col === 0).checked).toBe(false);
+  });
+
+  it("liefert 404 für nicht existierendes Board", async () => {
+    const twitchId = `checked-test-missing-${Date.now()}`;
+    const { app, sessionCookie, userId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${randomUUID()}/cells/0/0/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("liefert 404 für nicht-numerische Zellkoordinaten", async () => {
+    const twitchId = `checked-test-nan-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/abc/0/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+});

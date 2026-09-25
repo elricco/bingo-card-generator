@@ -8,9 +8,16 @@ import {
   getBoardById,
   deleteBoard,
   updateBoard,
+  setCellChecked,
 } from "../db/boards";
 
 const boardIdParamSchema = z.object({ id: z.string().uuid() });
+const cellCheckedParamsSchema = z.object({
+  id: z.string().uuid(),
+  row: z.coerce.number().int().min(0),
+  col: z.coerce.number().int().min(0),
+});
+const cellCheckedBodySchema = z.object({ checked: z.boolean() });
 
 export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
   app.post("/api/boards", async (request, reply) => {
@@ -132,4 +139,53 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
     }
     return reply.status(204).send();
   });
+
+  app.put<{ Params: { id: string; row: string; col: string } }>(
+    "/api/boards/:id/cells/:row/:col/checked",
+    async (request, reply) => {
+      const user = await requireAuth(request, reply);
+      if (!user) {
+        return;
+      }
+
+      const paramsResult = cellCheckedParamsSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(404).send({ error: "Board nicht gefunden" });
+      }
+
+      const bodyResult = cellCheckedBodySchema.safeParse(request.body);
+      if (!bodyResult.success) {
+        return reply
+          .status(400)
+          .send({ error: "Ungültige Eingabe", details: bodyResult.error.flatten() });
+      }
+
+      const existingBoard = await getBoardById(user.id, paramsResult.data.id);
+      if (!existingBoard) {
+        return reply.status(404).send({ error: "Board nicht gefunden" });
+      }
+
+      if (
+        paramsResult.data.row >= existingBoard.size ||
+        paramsResult.data.col >= existingBoard.size
+      ) {
+        return reply.status(400).send({
+          error: "Ungültige Eingabe",
+          details: { formErrors: ["Zellkoordinaten außerhalb des Boards"], fieldErrors: {} },
+        });
+      }
+
+      const updatedCell = await setCellChecked(
+        user.id,
+        paramsResult.data.id,
+        paramsResult.data.row,
+        paramsResult.data.col,
+        bodyResult.data.checked
+      );
+      if (!updatedCell) {
+        return reply.status(404).send({ error: "Board nicht gefunden" });
+      }
+      return updatedCell;
+    }
+  );
 }
