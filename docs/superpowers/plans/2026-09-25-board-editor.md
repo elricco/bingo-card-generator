@@ -2116,6 +2116,20 @@ EOF
 )"
 ```
 
+> **Korrektur (während Task 8 entdeckt):** Der oben in Step 2 vorgegebene
+> Testcode mountet `BoardEditView` direkt, ohne `<router-view>`. Vue Router 4s
+> `onBeforeRouteLeave()` registriert seinen Guard aber nur via
+> `inject(matchedRouteKey)`, das ausschließlich eine `RouterView`-Instanz
+> beim Rendern ihrer gematchten Komponente bereitstellt — ohne `<router-view>`
+> wird der Guard nie registriert (stille vue-router-Dev-Warnung statt Fehler),
+> wodurch der Test "fragt bei ungespeicherten Änderungen..." mit "expected
+> 'bound ' to be called at least once" fehlschlägt. Der tatsächlich
+> umgesetzte Fix betrifft ausschließlich die Mounting-Strategie in den drei
+> neuen Tests: eine Host-Komponente mit `<router-view />` wird gemountet und
+> per `router.push` navigiert, sodass `BoardEditView` als real gematchte
+> Route-Komponente rendert — analog zur echten App. Produktionscode
+> (`BoardEditView.vue`) bleibt exakt wie oben spezifiziert.
+
 ---
 
 ## Nach Abschluss dieses Plans
