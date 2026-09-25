@@ -173,6 +173,25 @@ describe("BoardEditView", () => {
 
     expect(wrapper.text()).toContain("Serverfehler");
   });
+
+  it("verhindert das Speichern mit leeren Spaltenlabels im custom-Modus", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => sampleBoard } as Response);
+    const router = createTestRouter();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(BoardEditView, { global: { plugins: [router] } });
+    await flushPromises();
+
+    await wrapper.find("select").setValue("custom");
+    await wrapper.find("button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Bitte alle Spaltenlabels ausfüllen.");
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/api/boards/b1"),
+      expect.objectContaining({ method: "PATCH" })
+    );
+  });
 });
 
 function createTestRouterWithBoardsList() {

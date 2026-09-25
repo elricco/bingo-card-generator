@@ -105,6 +105,10 @@ async function handleSave() {
   if (!board.value) {
     return;
   }
+  if (labelMode.value === "custom" && columnLabels.value.some((label) => !label.trim())) {
+    saveError.value = "Bitte alle Spaltenlabels ausfüllen.";
+    return;
+  }
   isSaving.value = true;
   saveError.value = null;
   try {

@@ -544,6 +544,7 @@ describe("PATCH /api/boards/:id", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().labelMode).toBe("letters");
+    expect(response.json().columnLabels).toBeNull();
   });
 
   it("lehnt bingo-Modus bei size!=5 mit 400 ab", async () => {

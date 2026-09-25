@@ -92,6 +92,9 @@ export async function updateBoard(userId: string, boardId: string, input: PatchB
     }
     if (input.label_mode !== undefined) {
       boardUpdates.labelMode = input.label_mode;
+      if (input.label_mode !== "custom") {
+        boardUpdates.columnLabels = null;
+      }
     }
     if (input.column_labels !== undefined) {
       boardUpdates.columnLabels = input.column_labels;
