@@ -10,6 +10,7 @@ import {
   check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { BoardSize, LabelMode } from "@bingo/shared";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -29,8 +30,8 @@ export const boards = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    size: smallint("size").notNull(),
-    labelMode: text("label_mode").notNull(),
+    size: smallint("size").notNull().$type<BoardSize>(),
+    labelMode: text("label_mode").notNull().$type<LabelMode>(),
     columnLabels: jsonb("column_labels").$type<string[] | null>(),
     overlayToken: text("overlay_token").notNull().unique(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
