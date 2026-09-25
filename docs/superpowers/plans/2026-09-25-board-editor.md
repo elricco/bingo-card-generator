@@ -1118,7 +1118,7 @@ EOF
 - Consumes: nichts Neues
 - Produces: `CellData`, `BoardDetail`, `PatchBoardInput` (Typen); `fetchBoard(id): Promise<BoardDetail | null>`, `updateBoard(id, input): Promise<BoardDetail>` — genutzt von Task 6/7 (`BoardEditView.vue`)
 
-- [ ] **Step 1: Fehlschlagende Tests ergänzen — `apps/web/src/stores/boards.test.ts` (am Ende der Datei ergänzen)**
+- [ ] **Step 1: Fehlschlagende Tests ergänzen — `apps/web/src/stores/boards.test.ts` (innerhalb des bestehenden `describe("useBoardsStore", ...)`-Blocks einfügen, direkt vor dessen schließender `});` in Zeile 93 — die verschachtelten `describe`-Blöcke erben so das äußere `beforeEach`/`afterEach` mit `setActivePinia`/`vi.stubGlobal("fetch", ...)`)**
 
 ```ts
 describe("fetchBoard", () => {
@@ -1489,6 +1489,7 @@ onMounted(async () => {
 ```ts
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
 import BoardEditView from "./BoardEditView.vue";
 
@@ -1516,6 +1517,7 @@ const sampleBoard = {
 
 describe("BoardEditView", () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -1572,6 +1574,12 @@ describe("BoardEditView", () => {
   });
 });
 ```
+
+> **Korrektur (während des Preflight-Scans entdeckt):** Die Komponente nutzt
+> `useBoardsStore()` (Pinia). Ohne `setActivePinia(createPinia())` im
+> `beforeEach` würde `mount(BoardEditView, ...)` sofort mit "no active Pinia"
+> fehlschlagen — der obige Import und Aufruf sind bereits korrigiert. Dieselbe
+> Korrektur gilt für die in Task 7/8 ergänzten Tests in derselben Datei.
 
 - [ ] **Step 3: Test ausführen, Erfolg verifizieren**
 
@@ -2024,6 +2032,7 @@ function createTestRouterWithBoardsList() {
 
 describe("BoardEditView – Verlassen-Warnung", () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.stubGlobal("fetch", vi.fn());
   });
 
