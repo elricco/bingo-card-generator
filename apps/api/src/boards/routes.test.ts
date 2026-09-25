@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { describe, it, expect, afterEach } from "vitest";
 import { eq } from "drizzle-orm";
 import "../env";
@@ -166,5 +167,277 @@ describe("GET /api/boards", () => {
     const app = await buildServer();
     const response = await app.inject({ method: "GET", url: "/api/boards" });
     expect(response.statusCode).toBe(401);
+  });
+});
+
+describe("GET /api/boards/:id", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const id of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+  });
+
+  it("liefert das eigene Board inkl. Zellen", async () => {
+    const twitchId = `board-routes-get-${Date.now()}`;
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: "get-tester",
+        displayName: "Get Tester",
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: "get-tester",
+      displayName: "Get Tester",
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+    createdUserIds.push(user.id);
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionCookie },
+      payload: { name: "Mein Board", size: 3, label_mode: "letters" },
+    });
+    const boardId = createResponse.json().id;
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().cells).toHaveLength(9);
+  });
+
+  it("liefert 404 statt 403 für fremdes Board", async () => {
+    const twitchIdA = `board-routes-get-a-${Date.now()}`;
+    const twitchIdB = `board-routes-get-b-${Date.now()}`;
+
+    const appA = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdA,
+        login: "get-a",
+        displayName: "Get A",
+        avatarUrl: null,
+      }),
+    });
+    const sessionA = await loginViaFakeProvider(appA, {
+      providerId: twitchIdA,
+      login: "get-a",
+      displayName: "Get A",
+      avatarUrl: null,
+    });
+
+    const appB = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdB,
+        login: "get-b",
+        displayName: "Get B",
+        avatarUrl: null,
+      }),
+    });
+    const sessionB = await loginViaFakeProvider(appB, {
+      providerId: twitchIdB,
+      login: "get-b",
+      displayName: "Get B",
+      avatarUrl: null,
+    });
+
+    const [userA] = await db.select().from(users).where(eq(users.twitchId, twitchIdA));
+    const [userB] = await db.select().from(users).where(eq(users.twitchId, twitchIdB));
+    createdUserIds.push(userA.id, userB.id);
+
+    const createResponse = await appA.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionA },
+      payload: { name: "Board von A", size: 3, label_mode: "letters" },
+    });
+    const boardId = createResponse.json().id;
+
+    const response = await appB.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionB },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("liefert 404 für nicht existierende ID", async () => {
+    const twitchId = `board-routes-get-missing-${Date.now()}`;
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: "get-missing",
+        displayName: "Get Missing",
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: "get-missing",
+      displayName: "Get Missing",
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+    createdUserIds.push(user.id);
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/boards/${randomUUID()}`,
+      cookies: { session: sessionCookie },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("liefert 404 für eine nicht-UUID-förmige ID statt eines 500ers", async () => {
+    const twitchId = `board-routes-get-malformed-${Date.now()}`;
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: "get-malformed",
+        displayName: "Get Malformed",
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: "get-malformed",
+      displayName: "Get Malformed",
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+    createdUserIds.push(user.id);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/boards/not-a-uuid",
+      cookies: { session: sessionCookie },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+});
+
+describe("DELETE /api/boards/:id", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const id of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+  });
+
+  it("löscht das eigene Board", async () => {
+    const twitchId = `board-routes-delete-${Date.now()}`;
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: "delete-tester",
+        displayName: "Delete Tester",
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: "delete-tester",
+      displayName: "Delete Tester",
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+    createdUserIds.push(user.id);
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionCookie },
+      payload: { name: "Mein Board", size: 3, label_mode: "letters" },
+    });
+    const boardId = createResponse.json().id;
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+    });
+
+    expect(response.statusCode).toBe(204);
+
+    const getResponse = await app.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+    });
+    expect(getResponse.statusCode).toBe(404);
+  });
+
+  it("liefert 404 statt 403 und löscht nichts bei fremdem Board", async () => {
+    const twitchIdA = `board-routes-delete-a-${Date.now()}`;
+    const twitchIdB = `board-routes-delete-b-${Date.now()}`;
+
+    const appA = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdA,
+        login: "delete-a",
+        displayName: "Delete A",
+        avatarUrl: null,
+      }),
+    });
+    const sessionA = await loginViaFakeProvider(appA, {
+      providerId: twitchIdA,
+      login: "delete-a",
+      displayName: "Delete A",
+      avatarUrl: null,
+    });
+
+    const appB = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdB,
+        login: "delete-b",
+        displayName: "Delete B",
+        avatarUrl: null,
+      }),
+    });
+    const sessionB = await loginViaFakeProvider(appB, {
+      providerId: twitchIdB,
+      login: "delete-b",
+      displayName: "Delete B",
+      avatarUrl: null,
+    });
+
+    const [userA] = await db.select().from(users).where(eq(users.twitchId, twitchIdA));
+    const [userB] = await db.select().from(users).where(eq(users.twitchId, twitchIdB));
+    createdUserIds.push(userA.id, userB.id);
+
+    const createResponse = await appA.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionA },
+      payload: { name: "Board von A", size: 3, label_mode: "letters" },
+    });
+    const boardId = createResponse.json().id;
+
+    const deleteResponse = await appB.inject({
+      method: "DELETE",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionB },
+    });
+    expect(deleteResponse.statusCode).toBe(404);
+
+    const getResponse = await appA.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionA },
+    });
+    expect(getResponse.statusCode).toBe(200);
   });
 });
