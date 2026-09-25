@@ -1701,6 +1701,21 @@ describe("BoardsView", () => {
     setActivePinia(createPinia());
     vi.stubGlobal("fetch", vi.fn());
     vi.spyOn(window, "confirm").mockReturnValue(true);
+    // Liefert für GET den aktuellen Store-Zustand, für DELETE nur { ok: true } —
+    // dadurch bewirkt der automatische Re-Fetch in onMounted keine Verfälschung
+    // vorab gesetzter boardsStore.boards-Werte, und nur ein echter deleteBoard()-Aufruf
+    // kann boards tatsächlich leeren.
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      const method = ((options as any)?.method || "GET").toUpperCase();
+      if (method === "DELETE") {
+        return { ok: true } as Response;
+      }
+      const store = useBoardsStore();
+      return {
+        ok: true,
+        json: async () => store.boards,
+      } as Response;
+    });
   });
 
   afterEach(() => {
@@ -1719,6 +1734,7 @@ describe("BoardsView", () => {
 
     const wrapper = mount(BoardsView, { global: { plugins: [router] } });
     await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(wrapper.text()).toContain("Streamerin");
     expect(wrapper.text()).toContain("Board Eins");
@@ -1733,6 +1749,7 @@ describe("BoardsView", () => {
 
     const wrapper = mount(BoardsView, { global: { plugins: [router] } });
     await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(wrapper.text()).toContain("Noch keine Boards vorhanden");
   });
@@ -1743,9 +1760,10 @@ describe("BoardsView", () => {
     const boardsStore = useBoardsStore();
     auth.user = { id: "1", login: "x", displayName: "Streamerin", avatarUrl: null };
     boardsStore.boards = [{ id: "b1", name: "Board Eins", size: 3, checkedCount: 0 } as never];
-    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
 
     const wrapper = mount(BoardsView, { global: { plugins: [router] } });
+    await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await wrapper.find("button.bg-red-700").trigger("click");
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -1753,6 +1771,23 @@ describe("BoardsView", () => {
   });
 });
 ```
+
+> **Korrektur (während Task 6 Review entdeckt):** Der ursprüngliche Testentwurf hatte
+> zwei echte Bugs: (1) Tests 1/2 mockten `fetch` gar nicht, obwohl `BoardsView.vue`s
+> `onMounted` beim Mount immer `boardsStore.fetchBoards()` aufruft (kein Guard gegen
+> bereits vorhandene Boards) — ein ungemockter `fetch` liefert `undefined`, was beim
+> Zugriff auf `.ok` wirft. (2) Test 3 mockte `json: async () => ({})` (ein Objekt statt
+> eines Arrays) und überschrieb damit zusätzlich pauschal JEDEN `fetch`-Aufruf — sowohl
+> den GET-Re-Fetch als auch das DELETE selbst landeten beim selben Wert, wodurch die
+> Assertion unabhängig davon grün wurde, ob `deleteBoard()` überhaupt funktioniert
+> (deterministischer False Positive, in Review nachgewiesen durch Entfernen des
+> `@click`-Handlers — Test blieb trotzdem grün). Behoben durch einen gemeinsamen,
+> methodenabhängigen `beforeEach`-Mock, der für GET den *aktuellen* Store-Zustand
+> zurückgibt (macht den Re-Fetch zum No-op) und für DELETE nur `{ok:true}` — dadurch
+> kann nur ein echter `deleteBoard()`-Aufruf `boards` tatsächlich leeren. Zusätzlich
+> `$nextTick()` + Makrotask-Flush vor jeder Assertion/Interaktion ergänzt, da eine
+> einzelne `nextTick()` die mehrfach verketteten `await`s in `fetchBoards()` nicht
+> zuverlässig abwartet.
 
 - [ ] **Step 3: Test ausführen, Erfolg verifizieren**
 
