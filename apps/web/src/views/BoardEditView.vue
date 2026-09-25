@@ -234,13 +234,15 @@ onUnmounted(() => {
       </div>
 
       <p v-if="saveError" class="mb-2 text-red-400">{{ saveError }}</p>
-      <button
-        :disabled="isSaving"
-        class="rounded bg-purple-600 px-4 py-2 font-semibold hover:bg-purple-700"
-        @click="handleSave"
-      >
-        Speichern
-      </button>
+      <div class="flex justify-end">
+        <button
+          :disabled="isSaving"
+          class="rounded bg-purple-600 px-4 py-2 font-semibold hover:bg-purple-700"
+          @click="handleSave"
+        >
+          Speichern
+        </button>
+      </div>
     </div>
     <p v-else>Lade...</p>
   </main>
