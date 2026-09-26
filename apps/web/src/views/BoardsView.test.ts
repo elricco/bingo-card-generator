@@ -80,6 +80,26 @@ describe("BoardsView", () => {
     expect(playLink.text()).toContain("Spielen");
   });
 
+  it("kopiert den Overlay-Link in die Zwischenablage", async () => {
+    const router = createTestRouter();
+    const auth = useAuthStore();
+    const boardsStore = useBoardsStore();
+    auth.user = { id: "1", login: "x", displayName: "Streamerin", avatarUrl: null };
+    boardsStore.boards = [
+      { id: "b1", name: "Board Eins", size: 3, checkedCount: 0, overlayToken: "abc123" } as never,
+    ];
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    const wrapper = mount(BoardsView, { global: { plugins: [router] } });
+    await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    await wrapper.find("button.bg-slate-700").trigger("click");
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/overlay/abc123"));
+  });
+
   it("zeigt Leerzustand ohne Boards", async () => {
     const router = createTestRouter();
     const auth = useAuthStore();

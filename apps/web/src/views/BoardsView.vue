@@ -26,6 +26,14 @@ async function handleDelete(id: string) {
   }
   await boardsStore.deleteBoard(id);
 }
+
+async function handleCopyOverlayLink(token?: string) {
+  if (!token) {
+    return;
+  }
+  const url = `${window.location.origin}/overlay/${token}`;
+  await navigator.clipboard.writeText(url);
+}
 </script>
 
 <template>
@@ -82,6 +90,12 @@ async function handleDelete(id: string) {
             >
               Spielen
             </RouterLink>
+            <button
+              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              @click="handleCopyOverlayLink(board.overlayToken)"
+            >
+              Overlay-Link kopieren
+            </button>
             <RouterLink
               :to="`/boards/${board.id}/edit`"
               class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
