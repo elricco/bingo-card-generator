@@ -4,6 +4,7 @@ import BoardsView from "../views/BoardsView.vue";
 import NewBoardView from "../views/NewBoardView.vue";
 import BoardEditView from "../views/BoardEditView.vue";
 import ControlView from "../views/ControlView.vue";
+import OverlayView from "../views/OverlayView.vue";
 import { useAuthStore } from "../stores/auth";
 
 export const router = createRouter({
@@ -23,6 +24,11 @@ export const router = createRouter({
       name: "board-play",
       component: ControlView,
       meta: { requiresAuth: true },
+    },
+    {
+      path: "/overlay/:token",
+      name: "overlay",
+      component: OverlayView,
     },
   ],
 });
