@@ -107,6 +107,28 @@ describe("GET /api/overlay/:token/events", () => {
     }
   });
 
+  it("setzt den CORS-Header auch auf der gehijackten SSE-Antwort", async () => {
+    const twitchId = `overlay-test-cors-${Date.now()}`;
+    const { app, userId, token } = await createBoardViaApi(twitchId);
+    createdUserIds.push(userId);
+
+    const address = await app.listen({ port: 0, host: "127.0.0.1" });
+    try {
+      const expectedOrigin = process.env.WEB_ORIGIN ?? "http://localhost:5173";
+      const response = await fetch(`${address}/api/overlay/${token}/events`, {
+        headers: { Origin: expectedOrigin },
+      });
+
+      expect(response.headers.get("access-control-allow-origin")).toBe(expectedOrigin);
+
+      const reader = response.body!.getReader();
+      await reader.read();
+      await reader.cancel();
+    } finally {
+      await app.close();
+    }
+  });
+
   it("sendet ein neues Event nach einer Änderung über PATCH", async () => {
     const twitchId = `overlay-test-sse-live-${Date.now()}`;
     const { app, userId, sessionCookie, boardId, token } = await createBoardViaApi(twitchId);
