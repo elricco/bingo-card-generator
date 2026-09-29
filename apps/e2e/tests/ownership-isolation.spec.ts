@@ -18,11 +18,12 @@ test("Fremde Boards sind weder einsehbar noch veränderbar; über den Overlay-Li
   const otherPage = await otherContext.newPage();
   await otherPage.goto("http://localhost:3001/e2e/login/andere");
   await otherPage.waitForURL(/\/boards$/);
-  // Die Boardliste wird erst nach dem Laden befüllt ("Lade..." verschwindet); ohne
-  // dieses Warten würde die anschließende Abwesenheits-Prüfung auch dann grün sein,
-  // wenn die Liste fremde Boards leaken würde, einfach weil sie noch nicht fertig
-  // gerendert ist.
-  await expect(otherPage.getByText("Lade...")).toHaveCount(0);
+  // "Lade..." verschwindet bereits, bevor die Boardliste überhaupt zu rendern begonnen
+  // hat (isLoading startet mit false, der Router-Guard verzögert das Mounten) - ein
+  // reines Warten auf das Verschwinden dieses Texts wäre daher ein Blindflug und würde
+  // auch dann grün bleiben, wenn die Liste fremde Boards leaken würde. Stattdessen auf
+  // den echten Leerzustand warten, den "andere" (ohne eigene Boards) tatsächlich sieht.
+  await expect(otherPage.getByText("Noch keine Boards vorhanden.")).toBeVisible();
 
   await expect(otherPage.getByText("E2E Fremdes Board")).toHaveCount(0);
 
