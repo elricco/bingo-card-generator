@@ -134,5 +134,35 @@ export const useBoardsStore = defineStore("boards", {
         );
       }
     },
+    async duplicateBoard(id: string): Promise<void> {
+      const response = await fetch(`${API_BASE_URL}/api/boards/${id}/duplicate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Board konnte nicht dupliziert werden");
+      }
+      await this.fetchBoards();
+    },
+    async resetBoardChecks(id: string): Promise<void> {
+      const response = await fetch(`${API_BASE_URL}/api/boards/${id}/reset`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Häkchen konnten nicht zurückgesetzt werden");
+      }
+      await this.fetchBoards();
+    },
+    async regenerateOverlayToken(id: string): Promise<void> {
+      const response = await fetch(`${API_BASE_URL}/api/boards/${id}/regenerate-token`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Overlay-Link konnte nicht erneuert werden");
+      }
+      await this.fetchBoards();
+    },
   },
 });

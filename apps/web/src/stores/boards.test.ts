@@ -196,4 +196,70 @@ describe("useBoardsStore", () => {
       await expect(store.setCellChecked("b1", 1, 1, true)).rejects.toThrow("Ungültige Eingabe");
     });
   });
+
+  describe("duplicateBoard", () => {
+    it("sendet POST und lädt die Boardliste danach neu", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => [] } as Response);
+
+      const store = useBoardsStore();
+      await store.duplicateBoard("b1");
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/boards/b1/duplicate"),
+        expect.objectContaining({ method: "POST", credentials: "include" })
+      );
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("wirft bei Fehlerantwort", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, json: async () => ({}) } as Response);
+
+      const store = useBoardsStore();
+      await expect(store.duplicateBoard("b1")).rejects.toThrow();
+    });
+  });
+
+  describe("resetBoardChecks", () => {
+    it("sendet POST und lädt die Boardliste danach neu", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => [] } as Response);
+
+      const store = useBoardsStore();
+      await store.resetBoardChecks("b1");
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/boards/b1/reset"),
+        expect.objectContaining({ method: "POST", credentials: "include" })
+      );
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("wirft bei Fehlerantwort", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, json: async () => ({}) } as Response);
+
+      const store = useBoardsStore();
+      await expect(store.resetBoardChecks("b1")).rejects.toThrow();
+    });
+  });
+
+  describe("regenerateOverlayToken", () => {
+    it("sendet POST und lädt die Boardliste danach neu", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => [] } as Response);
+
+      const store = useBoardsStore();
+      await store.regenerateOverlayToken("b1");
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/boards/b1/regenerate-token"),
+        expect.objectContaining({ method: "POST", credentials: "include" })
+      );
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("wirft bei Fehlerantwort", async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, json: async () => ({}) } as Response);
+
+      const store = useBoardsStore();
+      await expect(store.regenerateOverlayToken("b1")).rejects.toThrow();
+    });
+  });
 });
