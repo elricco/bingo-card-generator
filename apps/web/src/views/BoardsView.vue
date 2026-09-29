@@ -42,6 +42,13 @@ async function handleResetChecks(id: string) {
 }
 
 async function handleRegenerateToken(id: string) {
+  if (
+    !confirm(
+      "Overlay-Link neu generieren? Der alte Link funktioniert danach nicht mehr (z. B. in OBS eingetragene Quellen)."
+    )
+  ) {
+    return;
+  }
   await boardsStore.regenerateOverlayToken(id);
 }
 </script>

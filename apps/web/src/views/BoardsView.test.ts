@@ -167,6 +167,30 @@ describe("BoardsView", () => {
     );
   });
 
+  it("bricht die Token-Neugenerierung bei Abbruch der Bestätigung ab", async () => {
+    vi.spyOn(window, "confirm").mockReturnValueOnce(false);
+    const router = createTestRouter();
+    const auth = useAuthStore();
+    const boardsStore = useBoardsStore();
+    auth.user = { id: "1", login: "x", displayName: "Streamerin", avatarUrl: null };
+    boardsStore.boards = [{ id: "b1", name: "Board Eins", size: 3, checkedCount: 0 } as never];
+
+    const wrapper = mount(BoardsView, { global: { plugins: [router] } });
+    await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const regenButton = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Overlay-Link neu generieren");
+    await regenButton!.trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/api/boards/b1/regenerate-token"),
+      expect.anything()
+    );
+  });
+
   it("zeigt Leerzustand ohne Boards", async () => {
     const router = createTestRouter();
     const auth = useAuthStore();
