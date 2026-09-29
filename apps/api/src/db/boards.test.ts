@@ -12,6 +12,9 @@ import {
   updateBoard,
   setCellChecked,
   getBoardByOverlayToken,
+  duplicateBoard,
+  resetBoardChecks,
+  regenerateOverlayToken,
 } from "./boards";
 
 async function createTestUser() {
@@ -405,5 +408,191 @@ describe("getBoardByOverlayToken", () => {
     const result = await getBoardByOverlayToken("token-existiert-nicht");
 
     expect(result).toBeNull();
+  });
+});
+
+describe("duplicateBoard", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const userId of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, userId));
+    }
+  });
+
+  it("erstellt eine Kopie mit angehängtem '(Kopie)', gleicher Größe/Beschriftung/Texten und zurückgesetzten Häkchen", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Original",
+      size: 3,
+      label_mode: "letters",
+    });
+    await setCellChecked(user.id, board.id, 0, 0, true);
+    await updateBoard(user.id, board.id, { cells: [{ row: 0, col: 0, text: "Hallo" }] });
+
+    const duplicate = await duplicateBoard(user.id, board.id);
+
+    expect(duplicate?.name).toBe("Original (Kopie)");
+    expect(duplicate?.size).toBe(3);
+    expect(duplicate?.labelMode).toBe("letters");
+    expect(duplicate?.id).not.toBe(board.id);
+    expect(duplicate?.overlayToken).not.toBe(board.overlayToken);
+
+    const cells = await db.select().from(boardCells).where(eq(boardCells.boardId, duplicate!.id));
+    expect(cells).toHaveLength(9);
+    const copiedCell = cells.find((c) => c.row === 0 && c.col === 0);
+    expect(copiedCell?.text).toBe("Hallo");
+    expect(copiedCell?.checked).toBe(false);
+  });
+
+  it("kürzt den Basisnamen, damit der Kopie-Name das Längenlimit einhält", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const longName = "a".repeat(60);
+    const board = await createBoardWithCells(user.id, {
+      name: longName,
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const duplicate = await duplicateBoard(user.id, board.id);
+
+    expect(duplicate?.name.length).toBeLessThanOrEqual(60);
+    expect(duplicate?.name.endsWith(" (Kopie)")).toBe(true);
+  });
+
+  it("liefert null für ein Board eines fremden Users, ohne etwas zu erstellen", async () => {
+    const owner = await createTestUser();
+    const other = await createTestUser();
+    createdUserIds.push(owner.id, other.id);
+    const board = await createBoardWithCells(owner.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const duplicate = await duplicateBoard(other.id, board.id);
+
+    expect(duplicate).toBeNull();
+    const boardsForOwner = await listBoardsForUser(owner.id);
+    expect(boardsForOwner).toHaveLength(1);
+  });
+});
+
+describe("resetBoardChecks", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const userId of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, userId));
+    }
+  });
+
+  it("setzt alle Häkchen und checkedAt-Zeitstempel zurück", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    await setCellChecked(user.id, board.id, 0, 0, true);
+    await setCellChecked(user.id, board.id, 1, 1, true);
+
+    const result = await resetBoardChecks(user.id, board.id);
+
+    expect(result?.cells.every((c) => c.checked === false)).toBe(true);
+    expect(result?.cells.every((c) => c.checkedAt === null)).toBe(true);
+  });
+
+  it("lässt Zelltexte unverändert", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    await updateBoard(user.id, board.id, { cells: [{ row: 0, col: 0, text: "Bleibt" }] });
+
+    const result = await resetBoardChecks(user.id, board.id);
+
+    expect(result?.cells.find((c) => c.row === 0 && c.col === 0)?.text).toBe("Bleibt");
+  });
+
+  it("liefert null für ein Board eines fremden Users, ohne etwas zu ändern", async () => {
+    const owner = await createTestUser();
+    const other = await createTestUser();
+    createdUserIds.push(owner.id, other.id);
+    const board = await createBoardWithCells(owner.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    await setCellChecked(owner.id, board.id, 0, 0, true);
+
+    const result = await resetBoardChecks(other.id, board.id);
+
+    expect(result).toBeNull();
+    const cells = await db.select().from(boardCells).where(eq(boardCells.boardId, board.id));
+    expect(cells.find((c) => c.row === 0 && c.col === 0)?.checked).toBe(true);
+  });
+});
+
+describe("regenerateOverlayToken", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const userId of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, userId));
+    }
+  });
+
+  it("setzt einen neuen, anderen Overlay-Token", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const result = await regenerateOverlayToken(user.id, board.id);
+
+    expect(result?.overlayToken).toBeDefined();
+    expect(result?.overlayToken).not.toBe(board.overlayToken);
+  });
+
+  it("macht den alten Token ungültig (nicht mehr auffindbar)", async () => {
+    const user = await createTestUser();
+    createdUserIds.push(user.id);
+    const board = await createBoardWithCells(user.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    await regenerateOverlayToken(user.id, board.id);
+
+    const found = await getBoardByOverlayToken(board.overlayToken);
+    expect(found).toBeNull();
+  });
+
+  it("liefert null für ein Board eines fremden Users, ohne den Token zu ändern", async () => {
+    const owner = await createTestUser();
+    const other = await createTestUser();
+    createdUserIds.push(owner.id, other.id);
+    const board = await createBoardWithCells(owner.id, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+
+    const result = await regenerateOverlayToken(other.id, board.id);
+
+    expect(result).toBeNull();
+    const stillFound = await getBoardByOverlayToken(board.overlayToken);
+    expect(stillFound?.id).toBe(board.id);
   });
 });
