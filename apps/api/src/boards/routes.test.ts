@@ -999,3 +999,439 @@ describe("PUT /api/boards/:id/cells/:row/:col/checked", () => {
     unsubscribe();
   });
 });
+
+
+describe("POST /api/boards/:id/duplicate", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const id of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+  });
+
+  async function createLoggedInUserWithBoard(
+    twitchId: string,
+    boardInput: Record<string, unknown>
+  ) {
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: twitchId,
+        displayName: twitchId,
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionCookie },
+      payload: boardInput,
+    });
+
+    return { app, sessionCookie, userId: user.id, boardId: createResponse.json().id };
+  }
+
+  it("erstellt eine Kopie mit '(Kopie)'-Namenszusatz", async () => {
+    const twitchId = `duplicate-test-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/boards/${boardId}/duplicate`,
+      cookies: { session: sessionCookie },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().name).toBe("Board (Kopie)");
+    expect(response.json().id).not.toBe(boardId);
+  });
+
+  it("liefert 401 ohne Session", async () => {
+    const app = await buildServer();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/boards/00000000-0000-0000-0000-000000000000/duplicate",
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("liefert 404 statt 403 für fremdes Board, ohne etwas zu erstellen", async () => {
+    const twitchIdA = `duplicate-test-foreign-a-${Date.now()}`;
+    const twitchIdB = `duplicate-test-foreign-b-${Date.now()}`;
+    const { app: appA, sessionCookie: sessionA, userId: userIdA, boardId } =
+      await createLoggedInUserWithBoard(twitchIdA, {
+        name: "Board A",
+        size: 3,
+        label_mode: "letters",
+      });
+    createdUserIds.push(userIdA);
+
+    const appB = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdB,
+        login: "b",
+        displayName: "B",
+        avatarUrl: null,
+      }),
+    });
+    const sessionB = await loginViaFakeProvider(appB, {
+      providerId: twitchIdB,
+      login: "b",
+      displayName: "B",
+      avatarUrl: null,
+    });
+    const [userB] = await db.select().from(users).where(eq(users.twitchId, twitchIdB));
+    createdUserIds.push(userB.id);
+
+    const response = await appB.inject({
+      method: "POST",
+      url: `/api/boards/${boardId}/duplicate`,
+      cookies: { session: sessionB },
+    });
+    expect(response.statusCode).toBe(404);
+
+    const listResponse = await appA.inject({
+      method: "GET",
+      url: "/api/boards",
+      cookies: { session: sessionA },
+    });
+    expect(listResponse.json()).toHaveLength(1);
+  });
+
+  it("liefert 404 für nicht existierendes Board", async () => {
+    const twitchId = `duplicate-test-missing-${Date.now()}`;
+    const { app, sessionCookie, userId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/boards/${randomUUID()}/duplicate`,
+      cookies: { session: sessionCookie },
+    });
+    expect(response.statusCode).toBe(404);
+  });
+});
+
+describe("POST /api/boards/:id/reset", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const id of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+  });
+
+  async function createLoggedInUserWithBoard(
+    twitchId: string,
+    boardInput: Record<string, unknown>
+  ) {
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: twitchId,
+        displayName: twitchId,
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionCookie },
+      payload: boardInput,
+    });
+
+    return { app, sessionCookie, userId: user.id, boardId: createResponse.json().id };
+  }
+
+  it("setzt alle Häkchen zurück und veröffentlicht ein Board-Event", async () => {
+    const twitchId = `reset-test-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+    await app.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/0/0/checked`,
+      cookies: { session: sessionCookie },
+      payload: { checked: true },
+    });
+
+    const events: unknown[] = [];
+    const unsubscribe = subscribeToBoard(boardId, (payload) => events.push(payload));
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/boards/${boardId}/reset`,
+      cookies: { session: sessionCookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      (response.json().cells as Array<{ checked: boolean }>).every((c) => !c.checked)
+    ).toBe(true);
+    expect(events).toHaveLength(1);
+    unsubscribe();
+  });
+
+  it("liefert 401 ohne Session", async () => {
+    const app = await buildServer();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/boards/00000000-0000-0000-0000-000000000000/reset",
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("liefert 404 statt 403 für fremdes Board, ohne etwas zu ändern", async () => {
+    const twitchIdA = `reset-test-foreign-a-${Date.now()}`;
+    const twitchIdB = `reset-test-foreign-b-${Date.now()}`;
+    const { app: appA, sessionCookie: sessionA, userId: userIdA, boardId } =
+      await createLoggedInUserWithBoard(twitchIdA, {
+        name: "Board A",
+        size: 3,
+        label_mode: "letters",
+      });
+    createdUserIds.push(userIdA);
+    await appA.inject({
+      method: "PUT",
+      url: `/api/boards/${boardId}/cells/0/0/checked`,
+      cookies: { session: sessionA },
+      payload: { checked: true },
+    });
+
+    const appB = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdB,
+        login: "b",
+        displayName: "B",
+        avatarUrl: null,
+      }),
+    });
+    const sessionB = await loginViaFakeProvider(appB, {
+      providerId: twitchIdB,
+      login: "b",
+      displayName: "B",
+      avatarUrl: null,
+    });
+    const [userB] = await db.select().from(users).where(eq(users.twitchId, twitchIdB));
+    createdUserIds.push(userB.id);
+
+    const response = await appB.inject({
+      method: "POST",
+      url: `/api/boards/${boardId}/reset`,
+      cookies: { session: sessionB },
+    });
+    expect(response.statusCode).toBe(404);
+
+    const getResponse = await appA.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionA },
+    });
+    expect(
+      (getResponse.json().cells as Array<{ row: number; col: number; checked: boolean }>).find(
+        (c) => c.row === 0 && c.col === 0
+      )?.checked
+    ).toBe(true);
+  });
+
+  it("liefert 404 für nicht existierendes Board", async () => {
+    const twitchId = `reset-test-missing-${Date.now()}`;
+    const { app, sessionCookie, userId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/boards/${randomUUID()}/reset`,
+      cookies: { session: sessionCookie },
+    });
+    expect(response.statusCode).toBe(404);
+  });
+});
+
+describe("POST /api/boards/:id/regenerate-token", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const id of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+  });
+
+  async function createLoggedInUserWithBoard(
+    twitchId: string,
+    boardInput: Record<string, unknown>
+  ) {
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: twitchId,
+        displayName: twitchId,
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: sessionCookie },
+      payload: boardInput,
+    });
+
+    return { app, sessionCookie, userId: user.id, boardId: createResponse.json().id };
+  }
+
+  it("liefert einen neuen Overlay-Token, der alte wird ungültig", async () => {
+    const twitchId = `regen-test-${Date.now()}`;
+    const { app, sessionCookie, userId, boardId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const getResponse = await app.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionCookie },
+    });
+    const oldToken = getResponse.json().overlayToken;
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/boards/${boardId}/regenerate-token`,
+      cookies: { session: sessionCookie },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const newToken = response.json().overlayToken;
+    expect(newToken).not.toBe(oldToken);
+
+    const oldOverlayResponse = await app.inject({
+      method: "GET",
+      url: `/api/overlay/${oldToken}`,
+    });
+    expect(oldOverlayResponse.statusCode).toBe(404);
+
+    const newOverlayResponse = await app.inject({
+      method: "GET",
+      url: `/api/overlay/${newToken}`,
+    });
+    expect(newOverlayResponse.statusCode).toBe(200);
+  });
+
+  it("liefert 401 ohne Session", async () => {
+    const app = await buildServer();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/boards/00000000-0000-0000-0000-000000000000/regenerate-token",
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("liefert 404 statt 403 für fremdes Board, ohne den Token zu ändern", async () => {
+    const twitchIdA = `regen-test-foreign-a-${Date.now()}`;
+    const twitchIdB = `regen-test-foreign-b-${Date.now()}`;
+    const { app: appA, sessionCookie: sessionA, userId: userIdA, boardId } =
+      await createLoggedInUserWithBoard(twitchIdA, {
+        name: "Board A",
+        size: 3,
+        label_mode: "letters",
+      });
+    createdUserIds.push(userIdA);
+
+    const getBefore = await appA.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionA },
+    });
+    const tokenBefore = getBefore.json().overlayToken;
+
+    const appB = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchIdB,
+        login: "b",
+        displayName: "B",
+        avatarUrl: null,
+      }),
+    });
+    const sessionB = await loginViaFakeProvider(appB, {
+      providerId: twitchIdB,
+      login: "b",
+      displayName: "B",
+      avatarUrl: null,
+    });
+    const [userB] = await db.select().from(users).where(eq(users.twitchId, twitchIdB));
+    createdUserIds.push(userB.id);
+
+    const response = await appB.inject({
+      method: "POST",
+      url: `/api/boards/${boardId}/regenerate-token`,
+      cookies: { session: sessionB },
+    });
+    expect(response.statusCode).toBe(404);
+
+    const getAfter = await appA.inject({
+      method: "GET",
+      url: `/api/boards/${boardId}`,
+      cookies: { session: sessionA },
+    });
+    expect(getAfter.json().overlayToken).toBe(tokenBefore);
+  });
+
+  it("liefert 404 für nicht existierendes Board", async () => {
+    const twitchId = `regen-test-missing-${Date.now()}`;
+    const { app, sessionCookie, userId } = await createLoggedInUserWithBoard(twitchId, {
+      name: "Board",
+      size: 3,
+      label_mode: "letters",
+    });
+    createdUserIds.push(userId);
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/boards/${randomUUID()}/regenerate-token`,
+      cookies: { session: sessionCookie },
+    });
+    expect(response.statusCode).toBe(404);
+  });
+});

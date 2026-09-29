@@ -9,6 +9,9 @@ import {
   deleteBoard,
   updateBoard,
   setCellChecked,
+  duplicateBoard,
+  resetBoardChecks,
+  regenerateOverlayToken,
 } from "../db/boards";
 import { publishBoardEvent } from "../events/board-events";
 import { toPublicBoard } from "../overlay/public-board";
@@ -193,6 +196,64 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
         publishBoardEvent(freshBoard.id, toPublicBoard(freshBoard));
       }
       return updatedCell;
+    }
+  );
+
+  app.post<{ Params: { id: string } }>("/api/boards/:id/duplicate", async (request, reply) => {
+    const user = await requireAuth(request, reply);
+    if (!user) {
+      return;
+    }
+
+    const paramsResult = boardIdParamSchema.safeParse(request.params);
+    if (!paramsResult.success) {
+      return reply.status(404).send({ error: "Board nicht gefunden" });
+    }
+
+    const duplicate = await duplicateBoard(user.id, paramsResult.data.id);
+    if (!duplicate) {
+      return reply.status(404).send({ error: "Board nicht gefunden" });
+    }
+    return reply.status(201).send(duplicate);
+  });
+
+  app.post<{ Params: { id: string } }>("/api/boards/:id/reset", async (request, reply) => {
+    const user = await requireAuth(request, reply);
+    if (!user) {
+      return;
+    }
+
+    const paramsResult = boardIdParamSchema.safeParse(request.params);
+    if (!paramsResult.success) {
+      return reply.status(404).send({ error: "Board nicht gefunden" });
+    }
+
+    const result = await resetBoardChecks(user.id, paramsResult.data.id);
+    if (!result) {
+      return reply.status(404).send({ error: "Board nicht gefunden" });
+    }
+    publishBoardEvent(result.id, toPublicBoard(result));
+    return result;
+  });
+
+  app.post<{ Params: { id: string } }>(
+    "/api/boards/:id/regenerate-token",
+    async (request, reply) => {
+      const user = await requireAuth(request, reply);
+      if (!user) {
+        return;
+      }
+
+      const paramsResult = boardIdParamSchema.safeParse(request.params);
+      if (!paramsResult.success) {
+        return reply.status(404).send({ error: "Board nicht gefunden" });
+      }
+
+      const board = await regenerateOverlayToken(user.id, paramsResult.data.id);
+      if (!board) {
+        return reply.status(404).send({ error: "Board nicht gefunden" });
+      }
+      return board;
     }
   );
 }
