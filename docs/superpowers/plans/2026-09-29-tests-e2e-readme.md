@@ -631,6 +631,8 @@ EOF
 )"
 ```
 
+> **Korrektur (während der Ausführung gefunden, finale Whole-Branch-Review):** Sämtliche `await page.goto("/e2e/login/streamerin")`-Aufrufe in den Tasks 4–7 unten sind mit einer relativen URL geschrieben. Das funktioniert nicht: Playwrights `baseURL` zeigt auf die Web-App (Port 5173), während `/e2e/login/:userKey` nur auf der API (Port 3001) registriert ist. Jeder Implementer hat das in Fix-eigener Verantwortung während der Ausführung korrigiert (absolute URL `http://localhost:3001/e2e/login/...`), konsistent über alle vier Testdateien hinweg — verifiziert in der finalen Review. Beim erneuten Ausführen dieses Plans müssen alle `/e2e/login/...`-Aufrufe in Tasks 4–7 von vornherein als absolute URL geschrieben werden.
+
 ---
 
 ### Task 4: E2E — Login, Board-Anlage, Label-Darstellung (AC1, AC2, AC3)
