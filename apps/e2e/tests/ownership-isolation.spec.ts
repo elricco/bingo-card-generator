@@ -18,6 +18,11 @@ test("Fremde Boards sind weder einsehbar noch veränderbar; über den Overlay-Li
   const otherPage = await otherContext.newPage();
   await otherPage.goto("http://localhost:3001/e2e/login/andere");
   await otherPage.waitForURL(/\/boards$/);
+  // Die Boardliste wird erst nach dem Laden befüllt ("Lade..." verschwindet); ohne
+  // dieses Warten würde die anschließende Abwesenheits-Prüfung auch dann grün sein,
+  // wenn die Liste fremde Boards leaken würde, einfach weil sie noch nicht fertig
+  // gerendert ist.
+  await expect(otherPage.getByText("Lade...")).toHaveCount(0);
 
   await expect(otherPage.getByText("E2E Fremdes Board")).toHaveCount(0);
 
@@ -34,6 +39,34 @@ test("Fremde Boards sind weder einsehbar noch veränderbar; über den Overlay-Li
   );
   expect(overlayGetResponse.status()).toBe(200);
   expect(overlayGetResponse.headers()["content-type"]).toContain("application/json");
+
+  // "Read-only" heißt: über den Overlay-Token ist ausschließlich Lesen möglich. Das
+  // GET oben beweist das allein nicht — erst ein tatsächlicher Schreibversuch (und
+  // dessen Ablehnung) tut das. Die Overlay-Routen registrieren nur GET-Handler, ein
+  // PATCH/PUT auf denselben bzw. einen abgeleiteten Pfad trifft daher Fastifys
+  // Standard-404-Handler für "Route nicht gefunden" (empirisch bestätigt).
+  const overlayPatchResponse = await otherPage.request.patch(
+    `http://localhost:3001/api/overlay/${boardData.overlayToken}`,
+    { data: { name: "Hack" } }
+  );
+  expect(overlayPatchResponse.status()).toBe(404);
+
+  const overlayPutResponse = await otherPage.request.put(
+    `http://localhost:3001/api/overlay/${boardData.overlayToken}/cells/0/0/checked`,
+    { data: { checked: true } }
+  );
+  expect(overlayPutResponse.status()).toBe(404);
+
+  // Beweisen, dass die Schreibversuche wirklich nichts verändert haben: als
+  // tatsächliche Eigentümerin (Session in `page`) den echten Board-Zustand erneut
+  // abrufen und prüfen, dass Name und Zellstatus unverändert sind.
+  const ownerCheckResponse = await page.request.get(`http://localhost:3001/api/boards/${boardId}`);
+  const ownerCheckData = await ownerCheckResponse.json();
+  expect(ownerCheckData.name).toBe("E2E Fremdes Board");
+  const cellZeroZero = ownerCheckData.cells.find(
+    (c: { row: number; col: number; checked: boolean }) => c.row === 0 && c.col === 0
+  );
+  expect(cellZeroZero.checked).toBe(false);
 
   await otherContext.close();
 });

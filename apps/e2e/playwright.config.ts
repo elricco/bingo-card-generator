@@ -16,7 +16,10 @@ export default defineConfig({
       url: "http://localhost:3001/health",
       cwd: "../..",
       env: { E2E_TEST_MODE: "1", PORT: "3001" },
-      reuseExistingServer: !process.env.CI,
+      // Nie eine bereits laufende API-Instanz wiederverwenden (z. B. `pnpm dev:api`):
+      // eine solche Instanz läuft ohne E2E_TEST_MODE=1 und hat die /e2e/login/*-Routen
+      // nicht registriert, was zu verwirrenden Timeouts statt eines klaren Fehlers führt.
+      reuseExistingServer: false,
       timeout: 30000,
     },
     {

@@ -18,7 +18,17 @@ test.describe("Editor und Board-Verwaltung", () => {
     await page.locator(".aspect-square.bg-slate-800").first().click();
     await page.locator("textarea[data-cell]").fill("Erster Clip");
     await page.locator("textarea[data-cell]").blur();
+    const cellSavePatch = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/boards/") &&
+        response.request().method() === "PATCH" &&
+        response.ok()
+    );
     await page.getByRole("button", { name: "Speichern" }).click();
+    // Erst nachdem die Speicher-PATCH tatsächlich bestätigt ist, weiterprüfen — sonst
+    // zeigt die folgende Sichtbarkeitsprüfung ggf. nur den lokalen Vue-State, und der
+    // direkt danach folgende Reload könnte mit dem Speichern race'n.
+    await cellSavePatch;
     await expect(page.getByText("Erster Clip")).toBeVisible();
 
     await page.reload();
@@ -42,7 +52,18 @@ test.describe("Editor und Board-Verwaltung", () => {
     await expect(page.locator('input[type="text"]').first()).toHaveValue(originalName);
 
     await page.locator('input[type="text"]').first().fill(renamedName);
+    const renamePatch = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/boards/") &&
+        response.request().method() === "PATCH" &&
+        response.ok()
+    );
     await page.getByRole("button", { name: "Speichern" }).click();
+    await renamePatch;
+    // Ein toHaveValue(renamedName) direkt nach .fill()+Klick wäre tautologisch (es
+    // prüft nur den gerade selbst eingetippten Wert erneut). Erst ein Reload nach
+    // bestätigter Speicherung beweist, dass der Name wirklich persistiert wurde.
+    await page.reload();
     await expect(page.locator('input[type="text"]').first()).toHaveValue(renamedName);
 
     await page.getByRole("link", { name: "Zur Übersicht" }).click();
@@ -50,7 +71,17 @@ test.describe("Editor und Board-Verwaltung", () => {
     const row = page.locator("li", { hasText: renamedName });
     await row.getByRole("link", { name: "Spielen" }).click();
     await page.waitForURL(/\/boards\/.+\/play$/);
+    const checkPut = page.waitForResponse(
+      (response) =>
+        response.url().includes("/cells/") &&
+        response.request().method() === "PUT" &&
+        response.ok()
+    );
     await page.locator("button.bg-slate-800").first().click();
+    // Erst nach bestätigtem PUT zurücknavigieren — sonst kann die Boardliste geladen
+    // werden, bevor der Häkchen-Status serverseitig committed ist, was "1 abgehakt"
+    // gelegentlich verschwinden lässt.
+    await checkPut;
     await page.goBack();
     await page.waitForURL(/\/boards$/);
     await expect(row.getByText(/1 abgehakt/)).toBeVisible();

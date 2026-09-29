@@ -1479,6 +1479,41 @@ describe("Rate-Limiting auf Schreib-Endpoints", () => {
     expect(statusCodes[30]).toBe(429);
   });
 
+  it("liefert eine deutschsprachige Fehlermeldung im 429-Body", async () => {
+    const twitchId = `ratelimit-test-de-${Date.now()}`;
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: twitchId,
+        displayName: twitchId,
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+    createdUserIds.push(user.id);
+
+    let lastResponse;
+    for (let i = 0; i < 31; i++) {
+      lastResponse = await app.inject({
+        method: "POST",
+        url: "/api/boards",
+        cookies: { session: sessionCookie },
+        payload: { name: `Rate-Limit-DE-Board ${i}`, size: 3, label_mode: "letters" },
+      });
+    }
+
+    expect(lastResponse?.statusCode).toBe(429);
+    const body = lastResponse?.json();
+    expect(body.error).toBe("Zu viele Anfragen — bitte kurz warten.");
+    expect(body.error).not.toMatch(/Too Many Requests/i);
+  });
+
   it("zählt pro Sitzung getrennt (eine zweite, frische Sitzung ist nicht blockiert)", async () => {
     const twitchId = `ratelimit-test-separate-${Date.now()}`;
     const app = await buildServer({

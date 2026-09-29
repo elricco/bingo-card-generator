@@ -27,7 +27,13 @@ export async function buildServer(options: BuildServerOptions = {}) {
     throw new Error("SESSION_SECRET ist nicht gesetzt");
   }
   await app.register(cookie, { secret: sessionSecret });
-  await app.register(rateLimit, { global: false });
+  await app.register(rateLimit, {
+    global: false,
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      error: "Zu viele Anfragen — bitte kurz warten.",
+    }),
+  });
 
   app.get("/health", async () => ({ status: "ok" }));
 
