@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppHeader from "../components/AppHeader.vue";
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import { getColumnLabels, getRowLabels, type LabelMode } from "@bingo/shared";
@@ -84,7 +85,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-slate-900 p-6 text-slate-100">
+  <main class="min-h-screen bg-slate-900 text-slate-100">
+    <AppHeader show-back />
+    <div class="p-6">
     <div v-if="notFound">Board nicht gefunden.</div>
     <div v-else-if="board" class="mx-auto max-w-3xl">
       <h1 class="mb-4 text-2xl font-bold">{{ board.name }}</h1>
@@ -120,5 +123,6 @@ onMounted(async () => {
       </div>
     </div>
     <p v-else>Lade...</p>
+    </div>
   </main>
 </template>

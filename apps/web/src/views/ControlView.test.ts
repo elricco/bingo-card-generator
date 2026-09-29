@@ -69,11 +69,11 @@ describe("ControlView", () => {
     const wrapper = mount(ControlView, { global: { plugins: [router] } });
     await flushPromises();
 
-    const buttons = wrapper.findAll("button");
+    const buttons = wrapper.findAll("main > div button");
     await buttons[0].trigger("click");
     await flushPromises();
 
-    expect(wrapper.findAll("button")[0].text()).toContain("✕");
+    expect(wrapper.findAll("main > div button")[0].text()).toContain("✕");
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/boards/b1/cells/0/0/checked"),
       expect.objectContaining({ method: "PUT", body: JSON.stringify({ checked: true }) })
@@ -126,11 +126,11 @@ describe("ControlView", () => {
     const wrapper = mount(ControlView, { global: { plugins: [router] } });
     await flushPromises();
 
-    const buttons = wrapper.findAll("button");
+    const buttons = wrapper.findAll("main > div button");
     await buttons[0].trigger("click");
     await flushPromises();
 
-    expect(wrapper.findAll("button")[0].text()).not.toContain("✕");
+    expect(wrapper.findAll("main > div button")[0].text()).not.toContain("✕");
     expect(wrapper.text()).toContain("Serverfehler");
   });
 

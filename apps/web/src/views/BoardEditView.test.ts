@@ -140,7 +140,7 @@ describe("BoardEditView", () => {
     await flushPromises();
 
     await wrapper.find("input[type=text]").setValue("Neuer Name");
-    await wrapper.find("button").trigger("click");
+    await wrapper.find("main > div button").trigger("click");
     await flushPromises();
 
     expect(fetch).toHaveBeenCalledWith(
@@ -168,7 +168,7 @@ describe("BoardEditView", () => {
     await flushPromises();
 
     await wrapper.find("input[type=text]").setValue("Neuer Name");
-    await wrapper.find("button").trigger("click");
+    await wrapper.find("main > div button").trigger("click");
     await flushPromises();
 
     expect(wrapper.text()).toContain("Serverfehler");
@@ -183,7 +183,7 @@ describe("BoardEditView", () => {
     await flushPromises();
 
     await wrapper.find("select").setValue("custom");
-    await wrapper.find("button").trigger("click");
+    await wrapper.find("main > div button").trigger("click");
     await flushPromises();
 
     expect(wrapper.text()).toContain("Bitte alle Spaltenlabels ausfüllen.");

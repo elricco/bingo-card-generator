@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppHeader from "../components/AppHeader.vue";
 import { ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { BOARD_SIZES, DEFAULT_BOARD_NAME, type BoardSize, type LabelMode } from "@bingo/shared";
@@ -45,7 +46,9 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <main class="min-h-screen bg-slate-900 p-6 text-slate-100">
+  <main class="min-h-screen bg-slate-900 text-slate-100">
+    <AppHeader show-back />
+    <div class="p-6">
     <div class="mx-auto max-w-md">
       <h1 class="mb-4 text-2xl font-bold">Neues Board</h1>
 
@@ -88,6 +91,7 @@ async function handleSubmit() {
           Board erstellen
         </button>
       </form>
+    </div>
     </div>
   </main>
 </template>

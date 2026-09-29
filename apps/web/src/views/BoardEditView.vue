@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppHeader from "../components/AppHeader.vue";
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { onBeforeRouteLeave, useRoute } from "vue-router";
 import { getColumnLabels, getRowLabels, type LabelMode } from "@bingo/shared";
@@ -173,7 +174,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-slate-900 p-6 text-slate-100">
+  <main class="min-h-screen bg-slate-900 text-slate-100">
+    <AppHeader show-back />
+    <div class="p-6">
     <div v-if="notFound">Board nicht gefunden.</div>
     <div v-else-if="board" class="mx-auto max-w-3xl">
       <div class="mb-4 flex flex-col gap-4">
@@ -245,5 +248,6 @@ onUnmounted(() => {
       </div>
     </div>
     <p v-else>Lade...</p>
+    </div>
   </main>
 </template>

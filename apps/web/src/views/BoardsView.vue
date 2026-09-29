@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { RouterLink } from "vue-router";
+import AppHeader from "../components/AppHeader.vue";
 import { useAuthStore } from "../stores/auth";
 import { useBoardsStore } from "../stores/boards";
 
 const auth = useAuthStore();
 const boardsStore = useBoardsStore();
-const router = useRouter();
 
 onMounted(async () => {
   if (!auth.user) {
@@ -14,11 +14,6 @@ onMounted(async () => {
   }
   await boardsStore.fetchBoards();
 });
-
-async function handleLogout() {
-  await auth.logout();
-  router.push({ name: "home" });
-}
 
 async function handleDelete(id: string) {
   if (!confirm("Board wirklich löschen? Der Overlay-Link wird dadurch ungültig.")) {
@@ -38,23 +33,7 @@ async function handleCopyOverlayLink(token?: string) {
 
 <template>
   <main class="min-h-screen bg-slate-900 text-slate-100">
-    <header class="flex items-center justify-between border-b border-slate-700 p-4">
-      <div v-if="auth.user" class="flex items-center gap-3">
-        <img
-          v-if="auth.user.avatarUrl"
-          :src="auth.user.avatarUrl"
-          :alt="auth.user.displayName"
-          class="h-10 w-10 rounded-full"
-        />
-        <span>{{ auth.user.displayName }}</span>
-      </div>
-      <button
-        class="rounded bg-purple-600 px-4 py-2 font-semibold hover:bg-purple-700"
-        @click="handleLogout"
-      >
-        Ausloggen
-      </button>
-    </header>
+    <AppHeader />
 
     <div class="mx-auto max-w-3xl p-6">
       <div class="mb-4 flex items-center justify-between">
