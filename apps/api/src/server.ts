@@ -7,6 +7,7 @@ import { registerAuthRoutes } from "./auth/routes";
 import { registerBoardRoutes } from "./boards/routes";
 import { registerOverlayRoutes } from "./overlay/routes";
 import type { OAuthProvider } from "./auth/types";
+import { createE2EProvider, registerE2ERoutes } from "./e2e/setup";
 
 export interface BuildServerOptions {
   authProvider?: OAuthProvider;
@@ -38,7 +39,16 @@ export async function buildServer(options: BuildServerOptions = {}) {
 }
 
 async function main() {
-  const app = await buildServer();
+  const isE2ETestMode = process.env.E2E_TEST_MODE === "1";
+  if (isE2ETestMode) {
+    console.warn(
+      "E2E_TEST_MODE aktiv — Fake-Login-Routen (/e2e/*) sind registriert. Niemals in Produktion verwenden."
+    );
+  }
+  const app = await buildServer(isE2ETestMode ? { authProvider: createE2EProvider() } : {});
+  if (isE2ETestMode) {
+    await registerE2ERoutes(app);
+  }
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: "0.0.0.0" });
 }
