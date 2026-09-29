@@ -1435,3 +1435,91 @@ describe("POST /api/boards/:id/regenerate-token", () => {
     expect(response.statusCode).toBe(404);
   });
 });
+
+describe("Rate-Limiting auf Schreib-Endpoints", () => {
+  const createdUserIds: string[] = [];
+
+  afterEach(async () => {
+    for (const id of createdUserIds.splice(0)) {
+      await db.delete(users).where(eq(users.id, id));
+    }
+  });
+
+  it("blockiert nach 30 Schreib-Requests innerhalb von 10 Sekunden mit 429", async () => {
+    const twitchId = `ratelimit-test-${Date.now()}`;
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: twitchId,
+        displayName: twitchId,
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+    createdUserIds.push(user.id);
+
+    const statusCodes: number[] = [];
+    for (let i = 0; i < 31; i++) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/boards",
+        cookies: { session: sessionCookie },
+        payload: { name: `Rate-Limit-Board ${i}`, size: 3, label_mode: "letters" },
+      });
+      statusCodes.push(response.statusCode);
+    }
+
+    expect(statusCodes.filter((code) => code === 201)).toHaveLength(30);
+    expect(statusCodes[30]).toBe(429);
+  });
+
+  it("zählt pro Sitzung getrennt (eine zweite, frische Sitzung ist nicht blockiert)", async () => {
+    const twitchId = `ratelimit-test-separate-${Date.now()}`;
+    const app = await buildServer({
+      authProvider: createFakeProvider({
+        providerId: twitchId,
+        login: twitchId,
+        displayName: twitchId,
+        avatarUrl: null,
+      }),
+    });
+    const sessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const [user] = await db.select().from(users).where(eq(users.twitchId, twitchId));
+    createdUserIds.push(user.id);
+
+    for (let i = 0; i < 30; i++) {
+      await app.inject({
+        method: "POST",
+        url: "/api/boards",
+        cookies: { session: sessionCookie },
+        payload: { name: `Board ${i}`, size: 3, label_mode: "letters" },
+      });
+    }
+
+    const secondSessionCookie = await loginViaFakeProvider(app, {
+      providerId: twitchId,
+      login: twitchId,
+      displayName: twitchId,
+      avatarUrl: null,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/boards",
+      cookies: { session: secondSessionCookie },
+      payload: { name: "Board mit frischer Sitzung", size: 3, label_mode: "letters" },
+    });
+
+    expect(response.statusCode).toBe(201);
+  });
+});

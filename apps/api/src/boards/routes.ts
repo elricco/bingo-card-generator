@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { createBoardSchema, patchBoardSchema, validateLabelConfig } from "@bingo/shared";
 import { requireAuth } from "../auth/require-auth";
@@ -24,8 +24,18 @@ const cellCheckedParamsSchema = z.object({
 });
 const cellCheckedBodySchema = z.object({ checked: z.boolean() });
 
+const writeRouteOptions = {
+  config: {
+    rateLimit: {
+      max: 30,
+      timeWindow: "10 seconds",
+      keyGenerator: (request: FastifyRequest) => request.cookies?.session ?? request.ip,
+    },
+  },
+};
+
 export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/api/boards", async (request, reply) => {
+  app.post("/api/boards", writeRouteOptions, async (request, reply) => {
     const user = await requireAuth(request, reply);
     if (!user) {
       return;
@@ -69,7 +79,7 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
     return board;
   });
 
-  app.patch<{ Params: { id: string } }>("/api/boards/:id", async (request, reply) => {
+  app.patch<{ Params: { id: string } }>("/api/boards/:id", writeRouteOptions, async (request, reply) => {
     const user = await requireAuth(request, reply);
     if (!user) {
       return;
@@ -128,7 +138,7 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
     return updated;
   });
 
-  app.delete<{ Params: { id: string } }>("/api/boards/:id", async (request, reply) => {
+  app.delete<{ Params: { id: string } }>("/api/boards/:id", writeRouteOptions, async (request, reply) => {
     const user = await requireAuth(request, reply);
     if (!user) {
       return;
@@ -148,6 +158,7 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
 
   app.put<{ Params: { id: string; row: string; col: string } }>(
     "/api/boards/:id/cells/:row/:col/checked",
+    writeRouteOptions,
     async (request, reply) => {
       const user = await requireAuth(request, reply);
       if (!user) {
@@ -199,7 +210,7 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
     }
   );
 
-  app.post<{ Params: { id: string } }>("/api/boards/:id/duplicate", async (request, reply) => {
+  app.post<{ Params: { id: string } }>("/api/boards/:id/duplicate", writeRouteOptions, async (request, reply) => {
     const user = await requireAuth(request, reply);
     if (!user) {
       return;
@@ -217,7 +228,7 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
     return reply.status(201).send(duplicate);
   });
 
-  app.post<{ Params: { id: string } }>("/api/boards/:id/reset", async (request, reply) => {
+  app.post<{ Params: { id: string } }>("/api/boards/:id/reset", writeRouteOptions, async (request, reply) => {
     const user = await requireAuth(request, reply);
     if (!user) {
       return;
@@ -238,6 +249,7 @@ export async function registerBoardRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { id: string } }>(
     "/api/boards/:id/regenerate-token",
+    writeRouteOptions,
     async (request, reply) => {
       const user = await requireAuth(request, reply);
       if (!user) {

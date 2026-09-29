@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
+import rateLimit from "@fastify/rate-limit";
 import "./env";
 import { registerAuthRoutes } from "./auth/routes";
 import { registerBoardRoutes } from "./boards/routes";
@@ -25,6 +26,7 @@ export async function buildServer(options: BuildServerOptions = {}) {
     throw new Error("SESSION_SECRET ist nicht gesetzt");
   }
   await app.register(cookie, { secret: sessionSecret });
+  await app.register(rateLimit, { global: false });
 
   app.get("/health", async () => ({ status: "ok" }));
 
