@@ -1086,10 +1086,15 @@ pnpm test:e2e
   bewusst nicht Teil von v1.
 - Eine containerisierte Produktionsbereitstellung (Dockerfile für `apps/api`/`apps/web`) ist noch
   nicht gebaut — `docker-compose.yml` startet aktuell nur Postgres. Das konkrete Hosting-Ziel ist
-  laut SPEC noch offen; lokal reicht der oben beschriebene `pnpm build && pnpm start`-Weg.
+  laut SPEC noch offen; lokal lässt sich die API separat mit
+  `pnpm --filter @bingo/api build && pnpm --filter @bingo/api start` starten. Für `apps/web`
+  erzeugt `pnpm --filter @bingo/web build` ein statisches `dist/`-Verzeichnis, das noch von einem
+  eigenen Webserver ausgeliefert werden müsste — dafür gibt es aktuell keine vorgefertigte Lösung.
 - Weitere OAuth-Provider (YouTube, Discord) sind vorbereitet (die Auth-Schicht ist providerneutral
   aufgebaut), aber noch nicht implementiert.
 ```
+
+> **Korrektur (während der Ausführung gefunden, Task-8-Review):** Der obige README-Text verwies ursprünglich auf einen „oben beschriebenen `pnpm build && pnpm start`-Weg", der im Dokument nirgends tatsächlich beschrieben wird — im Root-`package.json` existiert kein `start`-Skript (nur `apps/api` hat eines). Ein Leser, der das wörtlich befolgt hätte, wäre auf einen Fehler gestoßen. Fix in Fix-Runde 1: Text durch die tatsächlich verifizierten Befehle pro App ersetzt (siehe oben).
 
 - [ ] **Step 2: Manuell gegenlesen**
 
