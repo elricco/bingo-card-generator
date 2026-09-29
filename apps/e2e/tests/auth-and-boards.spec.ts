@@ -46,6 +46,13 @@ test.describe("Login und Board-Anlage", () => {
     await page.getByRole("button", { name: "Board erstellen" }).click();
     await page.waitForURL(/\/boards\/.+\/edit$/);
     await expect(page.getByText("Wort1", { exact: true }).first()).toBeVisible();
+
+    await page.goto("/boards/new");
+    await page.getByLabel("Name").fill("E2E 9x9 Board");
+    await page.getByLabel("Größe").selectOption("9");
+    await page.getByRole("button", { name: "Board erstellen" }).click();
+    await page.waitForURL(/\/boards\/.+\/edit$/);
+    await expect(page.getByText("I", { exact: true }).first()).toBeVisible();
   });
 
   test("Spaltenbuchstaben oben/unten und Reihennummern links/rechts erscheinen im Editor, auf der Control-Seite und im Overlay (AC3)", async ({
@@ -63,13 +70,16 @@ test.describe("Login und Board-Anlage", () => {
     const boardId = page.url().split("/boards/")[1].split("/")[0];
 
     await expect(page.getByText(/^[A-C]$/)).toHaveCount(6);
+    await expect(page.getByText(/^[1-3]$/)).toHaveCount(6);
 
     await page.goto(`/boards/${boardId}/play`);
     await expect(page.getByText(/^[A-C]$/)).toHaveCount(6);
+    await expect(page.getByText(/^[1-3]$/)).toHaveCount(6);
 
     const boardData = await (await page.request.get(`http://localhost:3001/api/boards/${boardId}`)).json();
     const overlayPage = await context.newPage();
     await overlayPage.goto(`/overlay/${boardData.overlayToken}`);
     await expect(overlayPage.getByText(/^[A-C]$/)).toHaveCount(6);
+    await expect(overlayPage.getByText(/^[1-3]$/)).toHaveCount(6);
   });
 });
