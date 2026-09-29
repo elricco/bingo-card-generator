@@ -100,6 +100,73 @@ describe("BoardsView", () => {
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/overlay/abc123"));
   });
 
+  it("dupliziert ein Board", async () => {
+    const router = createTestRouter();
+    const auth = useAuthStore();
+    const boardsStore = useBoardsStore();
+    auth.user = { id: "1", login: "x", displayName: "Streamerin", avatarUrl: null };
+    boardsStore.boards = [{ id: "b1", name: "Board Eins", size: 3, checkedCount: 0 } as never];
+
+    const wrapper = mount(BoardsView, { global: { plugins: [router] } });
+    await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const duplicateButton = wrapper.findAll("button").find((b) => b.text() === "Duplizieren");
+    await duplicateButton!.trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/boards/b1/duplicate"),
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("setzt Häkchen nach Bestätigung zurück", async () => {
+    const router = createTestRouter();
+    const auth = useAuthStore();
+    const boardsStore = useBoardsStore();
+    auth.user = { id: "1", login: "x", displayName: "Streamerin", avatarUrl: null };
+    boardsStore.boards = [{ id: "b1", name: "Board Eins", size: 3, checkedCount: 3 } as never];
+
+    const wrapper = mount(BoardsView, { global: { plugins: [router] } });
+    await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const resetButton = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Häkchen zurücksetzen");
+    await resetButton!.trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/boards/b1/reset"),
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("generiert den Overlay-Token neu", async () => {
+    const router = createTestRouter();
+    const auth = useAuthStore();
+    const boardsStore = useBoardsStore();
+    auth.user = { id: "1", login: "x", displayName: "Streamerin", avatarUrl: null };
+    boardsStore.boards = [{ id: "b1", name: "Board Eins", size: 3, checkedCount: 0 } as never];
+
+    const wrapper = mount(BoardsView, { global: { plugins: [router] } });
+    await wrapper.vm.$nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const regenButton = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Overlay-Link neu generieren");
+    await regenButton!.trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/boards/b1/regenerate-token"),
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
   it("zeigt Leerzustand ohne Boards", async () => {
     const router = createTestRouter();
     const auth = useAuthStore();

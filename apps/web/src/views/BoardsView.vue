@@ -29,6 +29,21 @@ async function handleCopyOverlayLink(token?: string) {
   const url = `${window.location.origin}/overlay/${token}`;
   await navigator.clipboard.writeText(url);
 }
+
+async function handleDuplicate(id: string) {
+  await boardsStore.duplicateBoard(id);
+}
+
+async function handleResetChecks(id: string) {
+  if (!confirm("Alle Häkchen auf diesem Board zurücksetzen?")) {
+    return;
+  }
+  await boardsStore.resetBoardChecks(id);
+}
+
+async function handleRegenerateToken(id: string) {
+  await boardsStore.regenerateOverlayToken(id);
+}
 </script>
 
 <template>
@@ -62,7 +77,7 @@ async function handleCopyOverlayLink(token?: string) {
               {{ board.size }}×{{ board.size }} · {{ board.checkedCount }} abgehakt
             </p>
           </div>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <RouterLink
               :to="`/boards/${board.id}/play`"
               class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
@@ -81,6 +96,24 @@ async function handleCopyOverlayLink(token?: string) {
             >
               Bearbeiten
             </RouterLink>
+            <button
+              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              @click="handleDuplicate(board.id)"
+            >
+              Duplizieren
+            </button>
+            <button
+              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              @click="handleResetChecks(board.id)"
+            >
+              Häkchen zurücksetzen
+            </button>
+            <button
+              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              @click="handleRegenerateToken(board.id)"
+            >
+              Overlay-Link neu generieren
+            </button>
             <button
               class="rounded bg-red-700 px-3 py-1 hover:bg-red-600"
               @click="handleDelete(board.id)"
