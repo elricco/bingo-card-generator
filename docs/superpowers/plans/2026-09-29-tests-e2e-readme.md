@@ -722,6 +722,8 @@ test.describe("Login und Board-Anlage", () => {
 });
 ```
 
+> **Korrektur (während der Ausführung gefunden, Task-4-Review):** Der obige Testcode deckte AC2/AC3 nicht vollständig ab — der dritte Test prüfte nur Spaltenbuchstaben, nie Reihennummern (obwohl AC3 beides verlangt), und der zweite Test erstellte nie ein 9×9-Board (obwohl AC2 alle vier Größen 3×3/5×5/7×7/9×9 verlangt). Fix in Fix-Runde 1: Reihennummer-Assertions (`toHaveCount(6)` für Ziffern-Regex, analog zu den Buchstaben) für Editor/Control/Overlay ergänzt; ein 9×9-Board-Fall (Standardbeschriftung) im zweiten Test ergänzt. Siehe Ledger-Eintrag Task 4 für die vollständige Ruling-Begründung, inkl. der überstimmten Teil-Feststellung zu "eigene Spaltenwörter bei jeder Größe" (E2E-Abdeckung an einer repräsentativen Größe gilt als ausreichend).
+
 - [ ] **Step 2: Test ausführen**
 
 Run: `pnpm --filter e2e test tests/auth-and-boards.spec.ts`
