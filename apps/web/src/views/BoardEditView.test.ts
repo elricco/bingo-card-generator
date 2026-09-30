@@ -99,7 +99,7 @@ describe("BoardEditView", () => {
     expect((textarea.element as HTMLTextAreaElement).value).toBe("Erste Zelle");
   });
 
-  it("ist per Tab erreichbar und öffnet die Textarea mit Enter", async () => {
+  it("ist per Tab erreichbar und öffnet die Textarea automatisch beim Fokussieren", async () => {
     vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => sampleBoard } as Response);
     const router = createTestRouter();
     router.push("/boards/b1/edit");
@@ -111,7 +111,7 @@ describe("BoardEditView", () => {
     expect(cells.length).toBeGreaterThan(0);
     expect((cells[0].element as HTMLElement).tabIndex).toBe(0);
 
-    await cells[0].trigger("keydown", { key: "Enter" });
+    await cells[0].trigger("focus");
 
     const textarea = wrapper.find("textarea");
     expect(textarea.exists()).toBe(true);

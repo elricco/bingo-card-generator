@@ -234,8 +234,7 @@ onUnmounted(() => {
             aria-label="Feld bearbeiten"
             class="flex aspect-square items-center justify-center rounded bg-slate-800 p-1 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
             @click="!isEditing(gridCell.row, gridCell.col) && startEditing(gridCell.row, gridCell.col)"
-            @keydown.enter.prevent="!isEditing(gridCell.row, gridCell.col) && startEditing(gridCell.row, gridCell.col)"
-            @keydown.space.prevent="!isEditing(gridCell.row, gridCell.col) && startEditing(gridCell.row, gridCell.col)"
+            @focus="!isEditing(gridCell.row, gridCell.col) && startEditing(gridCell.row, gridCell.col)"
           >
             <textarea
               v-if="isEditing(gridCell.row, gridCell.col)"
