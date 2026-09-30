@@ -2,12 +2,19 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
+import staticPlugin from "@fastify/static";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import "./env";
 import { registerAuthRoutes } from "./auth/routes";
 import { registerBoardRoutes } from "./boards/routes";
 import { registerOverlayRoutes } from "./overlay/routes";
 import type { OAuthProvider } from "./auth/types";
 import { createE2EProvider, registerE2ERoutes } from "./e2e/setup";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const API_ROUTE_PREFIXES = ["/api/", "/auth/", "/overlay/", "/health", "/e2e/"];
 
 export interface BuildServerOptions {
   authProvider?: OAuthProvider;
@@ -40,6 +47,19 @@ export async function buildServer(options: BuildServerOptions = {}) {
   await registerAuthRoutes(app, { provider: options.authProvider });
   await registerBoardRoutes(app);
   await registerOverlayRoutes(app);
+
+  const webDistPath = process.env.WEB_DIST_PATH ?? path.join(__dirname, "../../web/dist");
+  if (existsSync(webDistPath)) {
+    await app.register(staticPlugin, { root: webDistPath });
+
+    app.setNotFoundHandler((request, reply) => {
+      const isApiRoute = API_ROUTE_PREFIXES.some((prefix) => request.url.startsWith(prefix));
+      if (isApiRoute) {
+        return reply.status(404).send({ error: "Nicht gefunden" });
+      }
+      return reply.sendFile("index.html");
+    });
+  }
 
   return app;
 }
