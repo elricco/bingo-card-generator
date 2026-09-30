@@ -4,6 +4,13 @@ import { RouterLink } from "vue-router";
 import AppHeader from "../components/AppHeader.vue";
 import { useAuthStore } from "../stores/auth";
 import { useBoardsStore } from "../stores/boards";
+import IconPlay from "../components/icons/IconPlay.vue";
+import IconLink from "../components/icons/IconLink.vue";
+import IconPencil from "../components/icons/IconPencil.vue";
+import IconDuplicate from "../components/icons/IconDuplicate.vue";
+import IconClear from "../components/icons/IconClear.vue";
+import IconRefresh from "../components/icons/IconRefresh.vue";
+import IconTrash from "../components/icons/IconTrash.vue";
 
 const auth = useAuthStore();
 const boardsStore = useBoardsStore();
@@ -76,7 +83,7 @@ async function handleRegenerateToken(id: string) {
         <li
           v-for="board in boardsStore.boards"
           :key="board.id"
-          class="flex items-center justify-between rounded bg-slate-800 p-4"
+          class="flex flex-col gap-2 rounded bg-slate-800 p-4"
         >
           <div>
             <p class="font-semibold">{{ board.name }}</p>
@@ -87,45 +94,59 @@ async function handleRegenerateToken(id: string) {
           <div class="flex flex-wrap gap-2">
             <RouterLink
               :to="`/boards/${board.id}/play`"
-              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              title="Spielen"
+              aria-label="Spielen"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
             >
-              Spielen
+              <IconPlay class="h-5 w-5" />
             </RouterLink>
             <button
-              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              title="Overlay-Link kopieren"
+              aria-label="Overlay-Link kopieren"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
               @click="handleCopyOverlayLink(board.overlayToken)"
             >
-              Overlay-Link kopieren
+              <IconLink class="h-5 w-5" />
             </button>
             <RouterLink
               :to="`/boards/${board.id}/edit`"
-              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              title="Bearbeiten"
+              aria-label="Bearbeiten"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
             >
-              Bearbeiten
+              <IconPencil class="h-5 w-5" />
             </RouterLink>
             <button
-              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              title="Duplizieren"
+              aria-label="Duplizieren"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
               @click="handleDuplicate(board.id)"
             >
-              Duplizieren
+              <IconDuplicate class="h-5 w-5" />
             </button>
             <button
-              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              title="Häkchen zurücksetzen"
+              aria-label="Häkchen zurücksetzen"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
               @click="handleResetChecks(board.id)"
             >
-              Häkchen zurücksetzen
+              <IconClear class="h-5 w-5" />
             </button>
             <button
-              class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600"
+              title="Overlay-Link neu generieren"
+              aria-label="Overlay-Link neu generieren"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
               @click="handleRegenerateToken(board.id)"
             >
-              Overlay-Link neu generieren
+              <IconRefresh class="h-5 w-5" />
             </button>
             <button
-              class="rounded bg-red-700 px-3 py-1 hover:bg-red-600"
+              title="Löschen"
+              aria-label="Löschen"
+              class="rounded bg-red-700 p-2 hover:bg-red-600"
               @click="handleDelete(board.id)"
             >
-              Löschen
+              <IconTrash class="h-5 w-5" />
             </button>
           </div>
         </li>

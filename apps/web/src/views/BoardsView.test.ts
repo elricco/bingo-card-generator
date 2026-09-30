@@ -77,7 +77,7 @@ describe("BoardsView", () => {
 
     const playLink = wrapper.find('a[href="/boards/b1/play"]');
     expect(playLink.exists()).toBe(true);
-    expect(playLink.text()).toContain("Spielen");
+    expect(playLink.attributes("aria-label")).toBe("Spielen");
   });
 
   it("kopiert den Overlay-Link in die Zwischenablage", async () => {
@@ -111,8 +111,8 @@ describe("BoardsView", () => {
     await wrapper.vm.$nextTick();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const duplicateButton = wrapper.findAll("button").find((b) => b.text() === "Duplizieren");
-    await duplicateButton!.trigger("click");
+    const duplicateButton = wrapper.find('button[aria-label="Duplizieren"]');
+    await duplicateButton.trigger("click");
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetch).toHaveBeenCalledWith(
@@ -132,10 +132,8 @@ describe("BoardsView", () => {
     await wrapper.vm.$nextTick();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const resetButton = wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Häkchen zurücksetzen");
-    await resetButton!.trigger("click");
+    const resetButton = wrapper.find('button[aria-label="Häkchen zurücksetzen"]');
+    await resetButton.trigger("click");
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetch).toHaveBeenCalledWith(
@@ -155,10 +153,8 @@ describe("BoardsView", () => {
     await wrapper.vm.$nextTick();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const regenButton = wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Overlay-Link neu generieren");
-    await regenButton!.trigger("click");
+    const regenButton = wrapper.find('button[aria-label="Overlay-Link neu generieren"]');
+    await regenButton.trigger("click");
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetch).toHaveBeenCalledWith(
@@ -179,10 +175,8 @@ describe("BoardsView", () => {
     await wrapper.vm.$nextTick();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const regenButton = wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Overlay-Link neu generieren");
-    await regenButton!.trigger("click");
+    const regenButton = wrapper.find('button[aria-label="Overlay-Link neu generieren"]');
+    await regenButton.trigger("click");
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(fetch).not.toHaveBeenCalledWith(
