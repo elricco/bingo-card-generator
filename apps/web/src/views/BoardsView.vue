@@ -91,7 +91,7 @@ async function handleRegenerateToken(id: string) {
               {{ board.size }}×{{ board.size }} · {{ board.checkedCount }} abgehakt
             </p>
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap justify-end gap-2">
             <RouterLink
               :to="`/boards/${board.id}/play`"
               title="Spielen"
