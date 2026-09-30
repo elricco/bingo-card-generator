@@ -19,6 +19,8 @@ async function handleLogout() {
       <RouterLink v-if="showBack" to="/boards" class="text-purple-400 hover:text-purple-300">
         ← Zur Übersicht
       </RouterLink>
+    </div>
+    <div class="flex items-center gap-4">
       <div v-if="auth.user" class="flex items-center gap-3">
         <img
           v-if="auth.user.avatarUrl"
@@ -28,12 +30,12 @@ async function handleLogout() {
         />
         <span>{{ auth.user.displayName }}</span>
       </div>
+      <button
+        class="rounded bg-purple-600 px-4 py-2 font-semibold hover:bg-purple-700"
+        @click="handleLogout"
+      >
+        Ausloggen
+      </button>
     </div>
-    <button
-      class="rounded bg-purple-600 px-4 py-2 font-semibold hover:bg-purple-700"
-      @click="handleLogout"
-    >
-      Ausloggen
-    </button>
   </header>
 </template>
