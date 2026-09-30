@@ -125,6 +125,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   position: relative;
   overflow: hidden;
+  container-type: size;
 }
 
 .overlay-label {
@@ -163,7 +164,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   color: #ef4444;
-  font-size: clamp(1rem, 6vmin, 4rem);
+  font-size: 65cqmin;
   font-weight: 900;
   text-shadow:
     -1px -1px 0 #000,
