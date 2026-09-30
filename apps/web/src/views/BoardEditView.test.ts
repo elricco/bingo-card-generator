@@ -99,6 +99,40 @@ describe("BoardEditView", () => {
     expect((textarea.element as HTMLTextAreaElement).value).toBe("Erste Zelle");
   });
 
+  it("ist per Tab erreichbar und öffnet die Textarea mit Enter", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => sampleBoard } as Response);
+    const router = createTestRouter();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(BoardEditView, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const cells = wrapper.findAll('[role="button"]');
+    expect(cells.length).toBeGreaterThan(0);
+    expect((cells[0].element as HTMLElement).tabIndex).toBe(0);
+
+    await cells[0].trigger("keydown", { key: "Enter" });
+
+    const textarea = wrapper.find("textarea");
+    expect(textarea.exists()).toBe(true);
+    expect((textarea.element as HTMLTextAreaElement).value).toBe("Erste Zelle");
+  });
+
+  it("entfernt ein Feld während der Bearbeitung aus der Tab-Reihenfolge", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => sampleBoard } as Response);
+    const router = createTestRouter();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(BoardEditView, { global: { plugins: [router] } });
+    await flushPromises();
+
+    const cells = wrapper.findAll('[role="button"]');
+    await cells[0].trigger("click");
+
+    const cellsWhileEditing = wrapper.findAll('[role="button"]');
+    expect((cellsWhileEditing[0].element as HTMLElement).tabIndex).toBe(-1);
+  });
+
   it("übernimmt den Text beim Blur und schließt die Textarea", async () => {
     vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => sampleBoard } as Response);
     const router = createTestRouter();
