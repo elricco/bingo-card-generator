@@ -20,7 +20,7 @@ describe("NewBoardView", () => {
     setActivePinia(createPinia());
   });
 
-  it("startet mit Default-Name, size=3 und label_mode=letters, ohne Custom-Felder", () => {
+  it("startet mit Default-Name, size=5 und label_mode=bingo, ohne Custom-Felder", () => {
     const router = createTestRouter();
     const wrapper = mount(NewBoardView, { global: { plugins: [router] } });
 
@@ -29,6 +29,11 @@ describe("NewBoardView", () => {
     );
     expect(wrapper.findAll("input[type=text]")).toHaveLength(1);
     expect(wrapper.text()).not.toContain("Spalte");
+
+    const sizeSelect = wrapper.findAll("select")[0].element as HTMLSelectElement;
+    expect(sizeSelect.value).toBe("5");
+    const labelSelect = wrapper.findAll("select")[1].element as HTMLSelectElement;
+    expect(labelSelect.value).toBe("bingo");
   });
 
   it("zeigt bei label_mode=custom genau size Spalten-Inputs", async () => {
@@ -50,7 +55,7 @@ describe("NewBoardView", () => {
     vi.spyOn(boardsStore, "createBoard").mockResolvedValue({
       id: "new-board-id",
       name: "Neues Bingo",
-      size: 3,
+      size: 5,
       checkedCount: 0,
     });
     const pushSpy = vi.spyOn(router, "push");
@@ -61,8 +66,8 @@ describe("NewBoardView", () => {
 
     expect(boardsStore.createBoard).toHaveBeenCalledWith({
       name: "Neues Bingo",
-      size: 3,
-      label_mode: "letters",
+      size: 5,
+      label_mode: "bingo",
       column_labels: undefined,
     });
     expect(pushSpy).toHaveBeenCalledWith("/boards/new-board-id/edit");

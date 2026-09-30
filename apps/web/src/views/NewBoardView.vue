@@ -9,8 +9,8 @@ const router = useRouter();
 const boardsStore = useBoardsStore();
 
 const name = ref(DEFAULT_BOARD_NAME);
-const size = ref<BoardSize>(3);
-const labelMode = ref<LabelMode>("letters");
+const size = ref<BoardSize>(5);
+const labelMode = ref<LabelMode>("bingo");
 const columnLabels = ref<string[]>([]);
 const error = ref<string | null>(null);
 const isSubmitting = ref(false);
