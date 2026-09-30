@@ -89,5 +89,6 @@ describe("statisches Frontend", () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).not.toEqual({ error: "Nicht gefunden" });
+    expect(response.headers["content-type"]).not.toContain("text/html");
   });
 });
