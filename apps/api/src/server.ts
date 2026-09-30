@@ -14,7 +14,7 @@ import type { OAuthProvider } from "./auth/types";
 import { createE2EProvider, registerE2ERoutes } from "./e2e/setup";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const API_ROUTE_PREFIXES = ["/api/", "/auth/", "/overlay/", "/health", "/e2e/"];
+const API_ROUTE_PREFIXES = ["/api/", "/auth/", "/health", "/e2e/"];
 
 export interface BuildServerOptions {
   authProvider?: OAuthProvider;
@@ -55,6 +55,9 @@ export async function buildServer(options: BuildServerOptions = {}) {
     app.setNotFoundHandler((request, reply) => {
       const isApiRoute = API_ROUTE_PREFIXES.some((prefix) => request.url.startsWith(prefix));
       if (isApiRoute) {
+        return reply.status(404).send({ error: "Nicht gefunden" });
+      }
+      if (request.method !== "GET" && request.method !== "HEAD") {
         return reply.status(404).send({ error: "Nicht gefunden" });
       }
       return reply.sendFile("index.html");

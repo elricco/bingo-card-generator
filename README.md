@@ -91,6 +91,10 @@ Die App lässt sich als einzelnes Docker-Image auf einem beliebigen eigenen Dock
 betreiben, der Traefik als Reverse Proxy nutzt (z. B. ein VPS, verwaltet per Portainer oder
 direkt per SSH). Frontend und Backend laufen dabei in einem Container — der Fastify-Server
 liefert das gebaute Vue-Frontend direkt mit aus, es ist kein separates Hosting dafür nötig.
+Die HTTP→HTTPS-Weiterleitung übernehmen die Traefik-Labels in `docker-compose.prod.yml` nicht
+selbst — sie setzen eine bereits laufende, eigene Traefik-Instanz mit global konfigurierter
+HTTP→HTTPS-Weiterleitung voraus (bei den meisten Traefik-Setups Standard, aber nicht automatisch
+Teil dieses Repos).
 
 1. `.env.prod.example` nach `.env.prod` kopieren und eigene Werte eintragen (Domain, Postgres-
    Zugangsdaten, `SESSION_SECRET`, Twitch-OAuth-Zugangsdaten). `.env.prod` wird **niemals**
@@ -115,6 +119,12 @@ Standardwerte (`traefik-public` / `letsencrypt`), `TRAEFIK_NETWORK`/`TRAEFIK_CER
 `.env.prod` entsprechend anpassen. Wird kein Traefik genutzt, die `labels:`-Sektion und die
 `traefik`-Netzwerk-Zeile in `docker-compose.prod.yml` entfernen und stattdessen einen Host-Port
 auf Container-Port 3001 mappen.
+
+Hinweis für die lokale Entwicklung: Die statische Ausliefer-/SPA-Fallback-Logik in
+`apps/api/src/server.ts` greift auch lokal, sobald unter `apps/web/dist` ein Build existiert —
+wurde also vorher schon mal `pnpm --filter @bingo/web build` lokal ausgeführt, liefert
+`pnpm dev:api` dieses gebaute Frontend zusätzlich mit aus. Das ist unschädlich, da der normale
+Dev-Workflow ohnehin `pnpm dev:web` auf einem eigenen Port nutzt, aber gut zu wissen.
 
 ## Bekannte Einschränkungen
 

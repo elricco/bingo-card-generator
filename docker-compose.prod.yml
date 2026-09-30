@@ -1,3 +1,5 @@
+name: bingo-prod
+
 services:
   app:
     build:
@@ -5,7 +7,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-bingo}:${POSTGRES_PASSWORD:-bingo}@postgres:5432/${POSTGRES_DB:-bingo}
+      DATABASE_URL: postgres://${POSTGRES_USER:-bingo}:${POSTGRES_PASSWORD:?Bitte POSTGRES_PASSWORD in .env.prod setzen}@postgres:5432/${POSTGRES_DB:-bingo}
       SESSION_SECRET: ${SESSION_SECRET}
       WEB_ORIGIN: https://${DOMAIN}
       TWITCH_CLIENT_ID: ${TWITCH_CLIENT_ID}
@@ -25,13 +27,14 @@ services:
       - "traefik.http.routers.bingo.entrypoints=websecure"
       - "traefik.http.routers.bingo.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
       - "traefik.http.services.bingo.loadbalancer.server.port=3001"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-traefik-public}"
 
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-bingo}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bingo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Bitte POSTGRES_PASSWORD in .env.prod setzen}
       POSTGRES_DB: ${POSTGRES_DB:-bingo}
     volumes:
       - bingo_postgres_data:/var/lib/postgresql/data

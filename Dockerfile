@@ -3,6 +3,7 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
+ENV VITE_API_BASE_URL=""
 RUN pnpm --filter @bingo/web build
 
 FROM node:20-alpine AS runtime
