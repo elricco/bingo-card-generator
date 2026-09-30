@@ -270,4 +270,59 @@ describe("BoardEditView – Verlassen-Warnung", () => {
 
     expect(router.currentRoute.value.name).toBe("boards");
   });
+
+  it("speichert und navigiert zurück zum Dashboard bei 'Speichern & Zurück'", async () => {
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      const method = ((options as RequestInit)?.method ?? "GET").toUpperCase();
+      if (method === "PATCH") {
+        return { ok: true, json: async () => ({ ...sampleBoard, name: "Neuer Name" }) } as Response;
+      }
+      return { ok: true, json: async () => sampleBoard } as Response;
+    });
+    const router = createTestRouterWithBoardsList();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(
+      { components: { RouterView }, template: "<router-view />" },
+      { global: { plugins: [router] } }
+    );
+    await flushPromises();
+
+    await wrapper.find("input[type=text]").setValue("Neuer Name");
+    const buttons = wrapper.findAll("main > div button");
+    await buttons[1].trigger("click");
+    await flushPromises();
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/boards/b1"),
+      expect.objectContaining({ method: "PATCH" })
+    );
+    expect(router.currentRoute.value.name).toBe("boards");
+  });
+
+  it("navigiert bei 'Speichern & Zurück' nicht, wenn das Speichern fehlschlägt", async () => {
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      const method = ((options as RequestInit)?.method ?? "GET").toUpperCase();
+      if (method === "PATCH") {
+        return { ok: false, json: async () => ({ error: "Serverfehler" }) } as Response;
+      }
+      return { ok: true, json: async () => sampleBoard } as Response;
+    });
+    const router = createTestRouterWithBoardsList();
+    router.push("/boards/b1/edit");
+    await router.isReady();
+    const wrapper = mount(
+      { components: { RouterView }, template: "<router-view />" },
+      { global: { plugins: [router] } }
+    );
+    await flushPromises();
+
+    await wrapper.find("input[type=text]").setValue("Neuer Name");
+    const buttons = wrapper.findAll("main > div button");
+    await buttons[1].trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Serverfehler");
+    expect(router.currentRoute.value.name).toBe("board-edit");
+  });
 });

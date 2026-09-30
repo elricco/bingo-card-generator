@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import AppHeader from "../components/AppHeader.vue";
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { onBeforeRouteLeave, useRoute } from "vue-router";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { getColumnLabels, getRowLabels, type LabelMode } from "@bingo/shared";
 import { useBoardsStore, type BoardDetail, type PatchBoardInput } from "../stores/boards";
 import { buildGridCells } from "../utils/grid";
 
 const route = useRoute();
+const router = useRouter();
 const boardsStore = useBoardsStore();
 
 const board = ref<BoardDetail | null>(null);
@@ -102,13 +103,13 @@ function applyBoard(result: BoardDetail) {
   }
 }
 
-async function handleSave() {
+async function handleSave(): Promise<boolean> {
   if (!board.value) {
-    return;
+    return false;
   }
   if (labelMode.value === "custom" && columnLabels.value.some((label) => !label.trim())) {
     saveError.value = "Bitte alle Spaltenlabels ausfüllen.";
-    return;
+    return false;
   }
   isSaving.value = true;
   saveError.value = null;
@@ -137,10 +138,19 @@ async function handleSave() {
 
     const updated = await boardsStore.updateBoard(board.value.id, payload);
     applyBoard(updated);
+    return true;
   } catch (err) {
     saveError.value = err instanceof Error ? err.message : "Speichern fehlgeschlagen";
+    return false;
   } finally {
     isSaving.value = false;
+  }
+}
+
+async function handleSaveAndBack() {
+  const success = await handleSave();
+  if (success) {
+    router.push("/boards");
   }
 }
 
@@ -237,13 +247,20 @@ onUnmounted(() => {
       </div>
 
       <p v-if="saveError" class="mb-2 text-red-400">{{ saveError }}</p>
-      <div class="flex justify-end">
+      <div class="flex justify-end gap-2">
         <button
           :disabled="isSaving"
           class="rounded bg-purple-600 px-4 py-2 font-semibold hover:bg-purple-700"
           @click="handleSave"
         >
           Speichern
+        </button>
+        <button
+          :disabled="isSaving"
+          class="rounded bg-slate-700 px-4 py-2 font-semibold hover:bg-slate-600"
+          @click="handleSaveAndBack"
+        >
+          Speichern & Zurück
         </button>
       </div>
     </div>
