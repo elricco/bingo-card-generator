@@ -96,14 +96,14 @@ async function handleRegenerateToken(id: string) {
               :to="`/boards/${board.id}/play`"
               title="Spielen"
               aria-label="Spielen"
-              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-purple-400"
             >
               <IconPlay class="h-5 w-5" />
             </RouterLink>
             <button
               title="Overlay-Link kopieren"
               aria-label="Overlay-Link kopieren"
-              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-purple-400"
               @click="handleCopyOverlayLink(board.overlayToken)"
             >
               <IconLink class="h-5 w-5" />
@@ -112,14 +112,14 @@ async function handleRegenerateToken(id: string) {
               :to="`/boards/${board.id}/edit`"
               title="Bearbeiten"
               aria-label="Bearbeiten"
-              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-purple-400"
             >
               <IconPencil class="h-5 w-5" />
             </RouterLink>
             <button
               title="Duplizieren"
               aria-label="Duplizieren"
-              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-purple-400"
               @click="handleDuplicate(board.id)"
             >
               <IconDuplicate class="h-5 w-5" />
@@ -127,7 +127,7 @@ async function handleRegenerateToken(id: string) {
             <button
               title="Häkchen zurücksetzen"
               aria-label="Häkchen zurücksetzen"
-              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-purple-400"
               @click="handleResetChecks(board.id)"
             >
               <IconClear class="h-5 w-5" />
@@ -135,7 +135,7 @@ async function handleRegenerateToken(id: string) {
             <button
               title="Overlay-Link neu generieren"
               aria-label="Overlay-Link neu generieren"
-              class="rounded bg-slate-700 p-2 hover:bg-slate-600"
+              class="rounded bg-slate-700 p-2 hover:bg-slate-600 focus-visible:ring-2 focus-visible:ring-purple-400"
               @click="handleRegenerateToken(board.id)"
             >
               <IconRefresh class="h-5 w-5" />
@@ -143,7 +143,7 @@ async function handleRegenerateToken(id: string) {
             <button
               title="Löschen"
               aria-label="Löschen"
-              class="rounded bg-red-700 p-2 hover:bg-red-600"
+              class="rounded bg-red-700 p-2 hover:bg-red-600 focus-visible:ring-2 focus-visible:ring-red-400"
               @click="handleDelete(board.id)"
             >
               <IconTrash class="h-5 w-5" />

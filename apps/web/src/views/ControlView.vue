@@ -108,15 +108,15 @@ onMounted(async () => {
           <button
             v-else
             type="button"
-            class="relative flex aspect-square items-center justify-center rounded bg-slate-800 p-1 text-center text-sm hover:bg-slate-700 [container-type:size]"
+            class="relative flex aspect-square items-center justify-center rounded bg-slate-800 p-1 text-center text-sm hover:bg-slate-700"
             @click="toggleCell(gridCell.row, gridCell.col)"
           >
             <span>{{ cellText(gridCell.row, gridCell.col) }}</span>
             <span
               v-if="checkedState[cellKey(gridCell.row, gridCell.col)]"
-              class="pointer-events-none absolute inset-0 flex items-center justify-center text-[65cqmin] font-bold text-red-500"
+              class="pointer-events-none absolute inset-0 flex items-center justify-center [container-type:size]"
             >
-              ✕
+              <span class="text-[65cqmin] font-bold text-red-500">✕</span>
             </span>
           </button>
         </template>
