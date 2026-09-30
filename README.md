@@ -103,10 +103,17 @@ Teil dieses Repos).
    die registrierte Redirect-URL auf `https://<eigene-domain>/auth/twitch/callback` setzen.
 3. Deployen:
    ```bash
-   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
    ```
-   Das funktioniert identisch, ob manuell per SSH ausgeführt oder als Stack in Portainer
-   eingerichtet (per Datei-Upload oder per Verweis auf ein Git-Repository).
+   Das Image wird nicht auf dem Host gebaut, sondern von GitHub Actions
+   (`.github/workflows/docker-publish.yml`) bei jedem Push auf `main` gebaut und nach
+   `ghcr.io/elricco/bingo-card-generator` gepusht (Tags `latest` und `sha-<commit>`). Der Host
+   zieht es nur. Ist das Package privat, muss der Host bzw. Portainer (*Registries → Add registry →
+   GitHub/Custom*) sich mit einem Personal Access Token (`read:packages`) bei ghcr.io anmelden —
+   alternativ das Package in den GitHub-Package-Einstellungen auf „public" stellen. Für einen
+   Rollback `BINGO_IMAGE` in `.env.prod` auf ein festes Tag setzen. Da kein Build-Kontext nötig
+   ist, lässt sich die Compose-Datei auch als Web-Editor-Stack in Portainer einfügen und dort
+   direkt bearbeiten.
 4. Einmalig (und nach künftigen Datenbank-Schema-Änderungen) Migrationen ausführen:
    ```bash
    docker compose -f docker-compose.prod.yml --env-file .env.prod exec app pnpm --filter @bingo/api db:migrate

@@ -2,9 +2,7 @@ name: bingo-prod
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${BINGO_IMAGE:-ghcr.io/elricco/bingo-card-generator:latest}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-bingo}:${POSTGRES_PASSWORD:?Bitte POSTGRES_PASSWORD in .env.prod setzen}@postgres:5432/${POSTGRES_DB:-bingo}
